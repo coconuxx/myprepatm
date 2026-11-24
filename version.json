@@ -1,7 +1,14 @@
 {
- "version": "0.1.1",
+ "version": "0.1.2",
  "date": "2026-11-24",
  "history": [
+  {
+   "version": "0.1.2",
+   "date": "2026-11-24",
+   "notes": [
+    "Activation de l'admin dans l'appli installée"
+   ]
+  },
   {
    "version": "0.1.1",
    "date": "2026-11-24",

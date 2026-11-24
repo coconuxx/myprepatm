@@ -100,6 +100,34 @@
       R.toast(TM.icon('check'), 'Mission du jour remise à zéro');
     };
     if ($('adm-off')) $('adm-off').onclick = () => { lock(); rerender(); };
+
+    // Entrée cachée pour l'appli installée sur l'iPhone : elle ne partage pas la mémoire de Safari, et un lien
+    // touché s'ouvre toujours dans Safari. 5 touches rapides sur la ligne « version » font apparaître un champ
+    // où coller le lien. Sans lien valide, ce champ ne donne rien.
+    const ver = document.querySelector('.app-version');
+    if (!ver || isAdmin()) return;
+    let taps = [];
+    ver.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return;
+      const now = Date.now(); taps = taps.filter((t) => now - t < 3000); taps.push(now);
+      if (taps.length < 5 || $('adm-paste')) return;
+      const box = document.createElement('div');
+      box.className = 'field admin-box';
+      box.innerHTML = `<span>Lien administrateur</span>
+        <div class="admin-row"><input id="adm-paste" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Colle ton lien ici"><button class="btn" id="adm-paste-go" type="button">Valider</button></div>
+        <small class="admin-msg" id="adm-msg" role="status"></small>`;
+      ver.after(box);
+      const input = $('adm-paste'); input.focus();
+      const tryIt = () => {
+        const m = /(?:#cle=)?([A-Za-z0-9_-]{16,})\s*$/.exec(input.value.trim());
+        if (m && known(sha256(m[1]))) {
+          try { localStorage.setItem(KEY, m[1]); } catch (err) {}
+          applyBadge(); R.toast(TM.icon('check'), 'Mode administrateur activé sur cet appareil'); rerender();
+        } else { $('adm-msg').textContent = 'Ce lien n’est pas valable.'; input.value = ''; }
+      };
+      $('adm-paste-go').onclick = tryIt;
+      input.onkeydown = (ev) => { if (ev.key === 'Enter') tryIt(); };
+    });
   }
 
   TM.admin = { isAdmin, lock, settingsHTML, bind, sha256 };
