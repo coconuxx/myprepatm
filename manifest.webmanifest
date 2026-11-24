@@ -1,0 +1,17 @@
+{
+  "name": "MyPrépaTM (bêta)",
+  "short_name": "MyPrépaTM",
+  "description": "Entraînement au TAGE MAGE : version bêta.",
+  "lang": "fr",
+  "start_url": "./#",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f8fd",
+  "theme_color": "#1a2150",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

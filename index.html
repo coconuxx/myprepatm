@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>MyPrépaTM</title>
+  <meta name="description" content="Entraînement au TAGE MAGE : exercices par sous-test, examens blancs, mode survie, défi du jour, XP, pièces et badges.">
+  <meta name="robots" content="noindex, nofollow"><!-- bêta privée : absente des moteurs de recherche -->
+  <meta name="theme-color" content="#1a2150">
+  <!-- Version bêta installable (iPhone : Safari → Partager → Sur l’écran d’accueil) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png?v=0.1.0">
+  <link rel="icon" type="image/svg+xml" href="icons/logo.svg?v=0.1.0">
+  <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png?v=0.1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MyPrépaTM">
+  <link rel="stylesheet" href="styles.css?v=0.1.0">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-logo" aria-hidden="true"><svg class="brand-mark" viewBox="12 26 80 56" width="30" height="21"><g fill="none" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,74 20,34 41,56 62,34 62,50" stroke="#b9c6ff"/><polyline points="52,62 63,73 84,40" stroke="#ff7a55"/></g></svg></span><span class="brand-name">MyPrépa<span class="brand-tm">TM</span></span><span class="beta-tag">Bêta</span></a>
+    <nav class="nav" aria-label="Navigation principale">
+      <a href="#lessons" data-view="lessons"><span data-icon="book"></span><b>Leçons</b></a>
+      <a href="#shop" data-view="shop"><span data-icon="bag"></span><b>Boutique</b></a>
+      <a class="nav-play" id="nav-play" href="#" data-view="home" aria-label="Jouer"><span data-icon="target"></span><b>Jouer</b></a>
+      <a href="#profile/ranking" data-view="ranking"><span data-icon="trophy"></span><b>Classement</b></a>
+      <a href="#profile" data-view="profile"><span data-icon="award"></span><b>Profil</b></a>
+    </nav>
+    <div id="hud" class="hud"></div>
+  </header>
+  <main id="app" class="container"></main>
+  <footer class="site-footer">
+    <a href="#legal">Mentions légales</a> · <a href="#privacy">Confidentialité</a>
+    <p>TAGE MAGE® est une marque de la FNEGE. Ce site indépendant n’est ni affilié à la FNEGE ni approuvé par elle.</p>
+  </footer>
+
+  <script src="js/version.js?v=0.1.0"></script>
+  <script src="js/util.js?v=0.1.0"></script>
+  <script src="js/icons.js?v=0.1.0"></script>
+  <script src="js/gen-calcul.js?v=0.1.0"></script>
+  <script src="js/gen-cm.js?v=0.1.0"></script>
+  <script src="js/gen-logique.js?v=0.1.0"></script>
+  <script src="js/bank-expression.js?v=0.1.0"></script>
+  <script src="js/bank-argumentation.js?v=0.1.0"></script>
+  <script src="js/bank-comprehension.js?v=0.1.0"></script>
+  <script src="js/lessons.js?v=0.1.0"></script>
+  <script src="js/courses.js?v=0.1.0"></script>
+  <script src="js/mascot.js?v=0.1.0"></script>
+  <script src="js/rewards.js?v=0.1.0"></script>
+  <script src="js/qr.js?v=0.1.0"></script>
+  <script src="js/social.js?v=0.1.0"></script>
+  <script src="js/errors.js?v=0.1.0"></script>
+  <script src="js/admin-config.js?v=0.1.0"></script>
+  <script src="js/admin.js?v=0.1.0"></script>
+  <script src="js/fluid.js?v=0.1.0"></script>
+  <script src="js/app.js?v=0.1.0"></script>
+  <script src="js/update.js?v=0.1.0"></script>
+</body>
+</html>
