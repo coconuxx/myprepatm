@@ -956,11 +956,12 @@
         <div class="row"><a class="btn ghost" href="#history">Historique des sessions</a><button class="btn ghost" id="reset">Réinitialiser ma progression</button></div>
         ${TM.accounts ? TM.accounts.settingsHTML() : ''}
         ${TM.admin ? TM.admin.settingsHTML() : ''}
-        <p class="muted app-version">MyPrépaTM version ${esc(window.TM_VERSION || '?')} (bêta) · <a href="#" id="s-news">Nouveautés</a></p>
+        <p class="muted app-version">MyPrépaTM version ${esc(window.TM_VERSION || '?')} (bêta) · <a href="#" id="s-news">Nouveautés</a> · <a href="#" id="s-tour">Visite guidée</a></p>
       </section>`;
     if (TM.accounts) TM.accounts.bindSettings();
     if (TM.admin) TM.admin.bind(() => profileView('settings'));
     const news = document.getElementById('s-news'); if (news && TM.update) news.onclick = (e) => { e.preventDefault(); TM.update.showNotes(true); };
+    const tourL = document.getElementById('s-tour'); if (tourL && TM.tour) tourL.onclick = (e) => { e.preventDefault(); TM.tour.replay(); };
     const $ = (id) => document.getElementById(id);
     const saveField = (k, v) => { R.setProfile({ [k]: v }); };
     $('s-name').onchange = (e) => saveField('name', e.target.value.trim());
@@ -1225,7 +1226,8 @@
         <li><code>tm_errors</code> : ton carnet d’erreurs (les questions ratées à revoir et ta progression sur celles-ci) ;</li>
         <li><code>tm_accounts</code> : les comptes créés sur cet appareil (pseudo, empreinte salée du mot de passe — jamais le mot de passe lui-même —, dates de création et de dernière activité, compte suspendu ou non) et le compte connecté ;</li>
         <li><code>tm_acc_…</code> : la progression des comptes de cet appareil qui ne sont pas connectés, rangée en attendant leur prochaine connexion ;</li>
-        <li><code>tm_social</code> : partie « amis » de ton compte (même identifiant et même pseudo), code ami, date de création, liste d’amis et d’invitations, défis et leur résultat ;</li>
+        <li><code>tm_social</code> : partie « amis » de ton compte (même identifiant et même pseudo), code ami, date de création, listes d’amis et de demandes (vides tant qu’il n’y a pas de serveur) ;</li>
+        <li><code>tm_tour</code> : retient que tu as déjà vu la visite guidée, pour ne pas te la remontrer ;</li>
         <li><code>tm_seen_version</code> : le numéro de la dernière version dont tu as vu les « Nouveautés », pour ne pas te les remontrer ;</li>
         <li><code>tm_admin</code> (seulement pour l’équipe du site) : jeton d’accès administrateur, enregistré uniquement sur l’appareil qui a ouvert le lien d’administration.</li>
       </ul>
@@ -1234,8 +1236,8 @@
       <h2>Compte et amis</h2>
       <p>Ton compte MyPrépaTM (pseudo et mot de passe) est enregistré <b>uniquement sur cet appareil</b> : il ne nous est jamais transmis et ne fonctionne pas sur un autre appareil. Ton mot de passe n’est jamais conservé, seulement une empreinte qui permet de le vérifier. <b>Faute de serveur, un mot de passe oublié ne peut pas être récupéré.</b></p>
       <p>Plusieurs personnes peuvent avoir un compte sur le même appareil ; chacune a sa propre progression. Sur un appareil où l’équipe du site a ouvert son lien d’administration, elle peut voir les comptes de cet appareil (pseudo, niveau, pièces, XP, dates), les suspendre, les supprimer ou modifier leur progression. Elle n’a jamais accès aux comptes d’un autre appareil.</p>
-      <p>Les amis utilisent ce même compte : aucun autre identifiant ni aucune adresse e-mail ne te sont demandés. Ce que voient tes amis : pseudo, avatar, niveau, badges, série et meilleurs scores.</p>
-      <p>Pour l’instant, les autres joueurs (amis, classement, défis) sont <b>simulés</b> par l’appli : tes données ne sont partagées avec personne. Cette page sera mise à jour avant que de vrais échanges entre joueurs soient possibles.</p>
+      <p>Les amis utilisent ce même compte : aucun autre identifiant ni aucune adresse e-mail ne te sont demandés.</p>
+      <p>Pour l’instant, il n’y a <b>aucun échange entre joueurs</b> : sans serveur, tes amis, le classement et les défis restent vides, et tes données ne sont partagées avec personne. Cette page sera mise à jour avant que de vrais échanges entre joueurs soient possibles.</p>
       <p>Tu peux supprimer ton compte à tout moment avec le bouton « Supprimer mon compte et mes données » plus bas sur cette page.</p>
       <p>Ce stockage est strictement nécessaire au service demandé : il ne demande donc pas de consentement (article 82 de la loi Informatique et Libertés). Il ne sert pas à te suivre et n’est partagé avec personne.</p>
       <h2>Hébergement</h2>
