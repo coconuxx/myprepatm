@@ -1,7 +1,14 @@
 {
- "version": "0.1.0",
+ "version": "0.1.1",
  "date": "2026-11-24",
  "history": [
+  {
+   "version": "0.1.1",
+   "date": "2026-11-24",
+   "notes": [
+    "Accès administrateur par le lien"
+   ]
+  },
   {
    "version": "0.1.0",
    "date": "2026-11-24",
