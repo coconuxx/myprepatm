@@ -1,7 +1,14 @@
 {
- "version": "0.1.4",
+ "version": "0.1.5",
  "date": "2026-11-24",
  "history": [
+  {
+   "version": "0.1.5",
+   "date": "2026-11-24",
+   "notes": [
+    "Plus de joueurs fictifs dans le classement et les amis"
+   ]
+  },
   {
    "version": "0.1.4",
    "date": "2026-11-24",
