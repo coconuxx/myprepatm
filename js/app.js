@@ -50,6 +50,10 @@
       invite: () => TM.social.invite(arg),
       legal: legalView, privacy: privacyView,
     };
+    // Compte : écran de connexion / création tant que personne n'est connecté sur cet appareil (js/accounts.js)
+    const gated = TM.accounts && !['legal', 'privacy'].includes(view) && TM.accounts.needsGate();
+    document.body.classList.toggle('acc-gated', !!gated);
+    if (gated) { document.body.classList.add('focus', 'onboarding'); return TM.accounts.gate($app); }
     const ob1 = !R.profile.onboarded && !['legal', 'privacy'].includes(view);
     document.body.classList.toggle('onboarding', ob1);
     if (ob1) { document.body.classList.add('focus'); return onboarding(); }
@@ -950,9 +954,11 @@
         <label class="opt left"><input type="checkbox" id="s-sound" ${P.sound ? 'checked' : ''}> Sons</label>
         <label class="opt left"><input type="checkbox" id="s-hide" ${P.hideGame ? 'checked' : ''}> Masquer la série et les pièces (mode concentration)</label>
         <div class="row"><a class="btn ghost" href="#history">Historique des sessions</a><button class="btn ghost" id="reset">Réinitialiser ma progression</button></div>
+        ${TM.accounts ? TM.accounts.settingsHTML() : ''}
         ${TM.admin ? TM.admin.settingsHTML() : ''}
         <p class="muted app-version">MyPrépaTM version ${esc(window.TM_VERSION || '?')} (bêta) · <a href="#" id="s-news">Nouveautés</a></p>
       </section>`;
+    if (TM.accounts) TM.accounts.bindSettings();
     if (TM.admin) TM.admin.bind(() => profileView('settings'));
     const news = document.getElementById('s-news'); if (news && TM.update) news.onclick = (e) => { e.preventDefault(); TM.update.showNotes(true); };
     const $ = (id) => document.getElementById(id);
@@ -966,7 +972,7 @@
     $('s-sound').onchange = (e) => { saveField('sound', e.target.checked); R.sound('ok'); };
     $('s-hide').onchange = (e) => { saveField('hideGame', e.target.checked); profileView('settings'); };
     $('reset').onclick = () => { if (confirm('Effacer XP, pièces, objets, badges, série, historique et questions déjà vues ? C’est définitif.')) { clearLocalData(); go(''); } };
-    if (arg === 'settings') requestAnimationFrame(() => $('settings').scrollIntoView({ block: 'start' }));
+    if (arg === 'settings') requestAnimationFrame(() => { const el = $('settings'); if (el) el.scrollIntoView({ block: 'start' }); });
   }
 
   // ---------- Boutique ----------
@@ -1166,12 +1172,29 @@
     };
   }
 
-  // Efface toutes les données de l'appli stockées sur l'appareil (clés tm_*)
+  // Clés propres à l'appareil et progression rangée des AUTRES comptes : jamais effacées pour un seul compte
+  const DEVICE_KEYS = ['tm_accounts', 'tm_admin', 'tm_seen_version'];
+  const progressKeys = () => { try { return Object.keys(localStorage).filter((k) => k.startsWith('tm_') && !k.startsWith('tm_acc_') && !DEVICE_KEYS.includes(k)); } catch (e) { return []; } };
+  // Efface la progression du compte connecté (les autres comptes de l'appareil ne sont pas touchés)
   function clearLocalData() {
     TM.errors && TM.errors.reset();
-    try { Object.keys(localStorage).filter((k) => k.startsWith('tm_')).forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+    progressKeys().forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
     R.reset();
     if (TM.social && TM.social.reset) TM.social.reset();
+  }
+  // Supprime le compte connecté (identifiants + progression), puis déconnecte. RGPD art. 17.
+  function deleteMyAccount() {
+    if (TM.accounts && TM.accounts.deleteCurrent) return TM.accounts.deleteCurrent();
+    clearLocalData();
+    try {
+      const st = JSON.parse(localStorage.getItem('tm_accounts') || 'null');
+      if (st && st.current) {
+        st.list = (st.list || []).filter((a) => a.id !== st.current);
+        localStorage.removeItem('tm_acc_' + st.current);
+        st.current = null; localStorage.setItem('tm_accounts', JSON.stringify(st));
+      }
+    } catch (e) {}
+    location.hash = ''; location.reload();
   }
 
   // ---------- Pages légales ----------
@@ -1190,6 +1213,7 @@
       <p><a href="#privacy">Politique de confidentialité →</a></p></article>`;
   }
   function privacyView() {
+    const me = TM.accounts && TM.accounts.current ? TM.accounts.current() : null;
     $app.innerHTML = `<article class="lesson pop-in"><h1>Confidentialité</h1>
       <p><b>En bref : nous ne collectons aucune donnée personnelle.</b> Tout reste dans ton navigateur : rien n’est envoyé à un serveur. Pas de mesure d’audience, pas de publicité.</p>
       <h2>Ce qui est enregistré sur ton appareil</h2>
@@ -1199,25 +1223,32 @@
         <li><code>tm_history</code> : tes 200 dernières sessions (date, mode, score) ;</li>
         <li><code>tm_used_…</code> : les questions déjà vues, pour éviter de te les reposer ;</li>
         <li><code>tm_errors</code> : ton carnet d’erreurs (les questions ratées à revoir et ta progression sur celles-ci) ;</li>
-        <li><code>tm_social</code> (seulement si tu crées un compte) : pseudo, code ami, date de création, e-mail facultatif, mot de passe <b>haché</b> (jamais en clair), liste d’amis et d’invitations, défis et leur résultat ;</li>
+        <li><code>tm_accounts</code> : les comptes créés sur cet appareil (pseudo, empreinte salée du mot de passe — jamais le mot de passe lui-même —, dates de création et de dernière activité, compte suspendu ou non) et le compte connecté ;</li>
+        <li><code>tm_acc_…</code> : la progression des comptes de cet appareil qui ne sont pas connectés, rangée en attendant leur prochaine connexion ;</li>
+        <li><code>tm_social</code> : partie « amis » de ton compte (même identifiant et même pseudo), code ami, date de création, liste d’amis et d’invitations, défis et leur résultat ;</li>
         <li><code>tm_seen_version</code> : le numéro de la dernière version dont tu as vu les « Nouveautés », pour ne pas te les remontrer ;</li>
         <li><code>tm_admin</code> (seulement pour l’équipe du site) : jeton d’accès administrateur, enregistré uniquement sur l’appareil qui a ouvert le lien d’administration.</li>
       </ul>
+      <p>L’appli demande aussi à ton navigateur de conserver ces données durablement (pour qu’il ne les efface pas s’il manque de place).</p>
       <p>À chaque ouverture, l’appli lit le fichier <code>version.json</code> sur ce même site pour savoir si une nouvelle version est disponible. Cette vérification ne transmet aucune de tes données (progression, compte…) et ne fait appel à aucun autre site.</p>
       <h2>Compte et amis</h2>
-      <p>Le compte est <b>local</b> : il n’existe que sur cet appareil et ne nous est pas transmis. Ton e-mail sert uniquement à te reconnecter et n’est jamais montré aux autres. Ce que voient tes amis : pseudo, avatar, niveau, badges, série et meilleurs scores.</p>
+      <p>Ton compte MyPrépaTM (pseudo et mot de passe) est enregistré <b>uniquement sur cet appareil</b> : il ne nous est jamais transmis et ne fonctionne pas sur un autre appareil. Ton mot de passe n’est jamais conservé, seulement une empreinte qui permet de le vérifier. <b>Faute de serveur, un mot de passe oublié ne peut pas être récupéré.</b></p>
+      <p>Plusieurs personnes peuvent avoir un compte sur le même appareil ; chacune a sa propre progression. Sur un appareil où l’équipe du site a ouvert son lien d’administration, elle peut voir les comptes de cet appareil (pseudo, niveau, pièces, XP, dates), les suspendre, les supprimer ou modifier leur progression. Elle n’a jamais accès aux comptes d’un autre appareil.</p>
+      <p>Les amis utilisent ce même compte : aucun autre identifiant ni aucune adresse e-mail ne te sont demandés. Ce que voient tes amis : pseudo, avatar, niveau, badges, série et meilleurs scores.</p>
       <p>Pour l’instant, les autres joueurs (amis, classement, défis) sont <b>simulés</b> par l’appli : tes données ne sont partagées avec personne. Cette page sera mise à jour avant que de vrais échanges entre joueurs soient possibles.</p>
-      <p>Tu peux supprimer ton compte à tout moment depuis <a href="#profile/account">Profil › Compte</a>.</p>
+      <p>Tu peux supprimer ton compte à tout moment avec le bouton « Supprimer mon compte et mes données » plus bas sur cette page.</p>
       <p>Ce stockage est strictement nécessaire au service demandé : il ne demande donc pas de consentement (article 82 de la loi Informatique et Libertés). Il ne sert pas à te suivre et n’est partagé avec personne.</p>
       <h2>Hébergement</h2>
       <p>Le site est hébergé par GitHub Pages (GitHub, Inc., États-Unis). Comme pour tout site web, l’hébergeur reçoit ton adresse IP pour t’afficher les pages ; GitHub l’enregistre dans ses journaux pour la sécurité de son service, que tu aies un compte GitHub ou non. Ce traitement est réalisé par GitHub sous sa propre responsabilité : voir sa <a href="https://docs.github.com/fr/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">déclaration de confidentialité</a>. Nous n’avons pas accès à ces journaux.</p>
       <h2>Effacer tes données</h2>
-      <p>Tu peux tout effacer à tout moment avec le bouton ci-dessous, ou en vidant les données du site dans ton navigateur.</p>
-      <div class="row"><button class="btn danger" id="wipe">Effacer toutes mes données</button></div>
+      ${me ? `<p>Le bouton ci-dessous supprime ton compte <b>${esc(me.username)}</b> et toute sa progression, puis te déconnecte. Les autres comptes de cet appareil ne sont pas touchés.</p>
+      <div class="row"><button class="btn danger" id="wipe">Supprimer mon compte et mes données</button></div>` : `<p>Connecte-toi pour supprimer ton compte et ta progression.</p>`}
+      <p>Vider les données du site dans les réglages de ton navigateur efface tous les comptes de cet appareil.</p>
       <h2>Tes droits</h2>
       <p>Comme nous ne recevons aucune de tes données, tu exerces toi-même tes droits d’accès et d’effacement : tout est visible dans l’appli et s’efface avec le bouton ci-dessus. Tu peux aussi adresser une réclamation à la <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a>.</p>
       <p class="muted">Dernière mise à jour : 24 novembre 2026.</p></article>`;
-    document.getElementById('wipe').onclick = () => { if (confirm('Effacer toutes tes données sur cet appareil : XP, pièces, objets, badges, série, historique et compte ? C’est définitif.')) { clearLocalData(); R.renderHud(); privacyView(); } };
+    const wipe = document.getElementById('wipe');
+    if (wipe) wipe.onclick = () => { if (confirm(`Supprimer ton compte « ${me.username} » et toute sa progression : XP, pièces, objets, badges, série, historique ? C’est définitif.`)) deleteMyAccount(); };
   }
 
   // ---------- Leçons ----------

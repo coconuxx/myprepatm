@@ -32,12 +32,31 @@
   const randCode = (n, r = Math.random) => Array.from({ length: n }, () => CODE_CHARS[Math.floor(r() * CODE_CHARS.length)]).join('');
 
   // ---------- Stockage ----------
-  const DEFAULT = { account: null, loggedIn: false, seedAt: null, friends: [], sent: [], incoming: [], duels: [], week: null, lastBotInvite: 0, seen: {} };
+  const DEFAULT = { account: null, seedAt: null, friends: [], sent: [], incoming: [], duels: [], week: null, lastBotInvite: 0, seen: {} };
   let S;
   function load() { try { S = Object.assign({}, DEFAULT, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { S = Object.assign({}, DEFAULT); } }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   load();
-  const me = () => (S.loggedIn ? S.account : null);
+  // Le compte social suit le vrai compte de l'appareil (js/accounts.js) : un seul pseudo,
+  // une seule connexion. Aucun e-mail ni mot de passe n'est stocké par ce module.
+  function linkedAccount() {
+    const c = TM.accounts && TM.accounts.current && TM.accounts.current();
+    if (!c) return null;
+    if (!S.account || S.account.linked !== c.id) {
+      S.account = { id: c.id, linked: c.id, pseudo: c.username, code: (S.account && S.account.code) || 'TAGE-' + randCode(4), createdAt: (S.account && S.account.createdAt) || new Date(c.created || now()).toISOString() };
+      delete S.loggedIn; seedFirst(); save();
+    } else if (S.account.pseudo !== c.username) { S.account.pseudo = c.username; save(); }
+    return S.account;
+  }
+  const me = () => linkedAccount();
+  function seedFirst() {
+    if (S.seedAt) return;
+    // Premiers amis, une demande reçue et une invitation à un défi, pour démarrer
+    S.seedAt = now();
+    S.friends = ['b0', 'b1', 'b4'];
+    S.incoming = [{ id: 'b6', at: now() }];
+    S.lastBotInvite = 0;
+  }
 
   // ---------- Joueurs simulés ----------
   const NAMES = ['lea_prepa', 'Max.TAGE', 'Ines_B', 'yanis92', 'CamilleM', 'hugo.calc', 'sarah_esc', 'Nathan_R', 'jade.logique', 'adam600', 'chloe.v', 'theo_b', 'manon.prep', 'lucas_k', 'emma.tm', 'rayan_m'];
@@ -96,39 +115,6 @@
     const b = bot(id); return TM.mascot.svg({ look: b.look, equip: b.equip, level: botStats(b).level, size });
   };
   const nameOf = (id) => (id === 'me' ? (me() ? me().pseudo : 'Moi') : bot(id).pseudo);
-
-  // ---------- Compte ----------
-  async function hashPass(pass, salt) {
-    const enc = new TextEncoder();
-    const k = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveBits']);
-    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(salt), iterations: 100000, hash: 'SHA-256' }, k, 256);
-    return Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, '0')).join('');
-  }
-  const PSEUDO_RE = /^[A-Za-z0-9À-ÿ_.\-]{3,20}$/;
-  function pseudoError(p) {
-    if (!PSEUDO_RE.test(p)) return 'De 3 à 20 caractères : lettres, chiffres, point, tiret ou tiret bas.';
-    if (BOTS.some((b) => b.pseudo.toLowerCase() === p.toLowerCase())) return 'Ce pseudo est déjà pris.';
-    return '';
-  }
-  async function createAccount({ pseudo, email, pass }) {
-    const acc = { id: 'u-' + randCode(8), pseudo, code: 'TAGE-' + randCode(4), createdAt: new Date().toISOString(), email: email || null };
-    if (email) { acc.salt = randCode(16); acc.hash = await hashPass(pass, acc.salt); }
-    const first = !S.seedAt;
-    S.account = acc; S.loggedIn = true; S.seedAt = S.seedAt || now();
-    if (first) {
-      // Premiers amis, une demande reçue et une invitation à un défi, pour démarrer
-      S.friends = ['b0', 'b1', 'b4'];
-      S.incoming = [{ id: 'b6', at: now() }];
-      S.lastBotInvite = 0;
-    }
-    save(); botActivity();
-  }
-  async function login(ident, pass) {
-    const a = S.account;
-    if (!a || !a.email || (ident.toLowerCase() !== a.email.toLowerCase() && ident.toLowerCase() !== a.pseudo.toLowerCase())) return 'Aucun compte avec cet e-mail ou ce pseudo sur cet appareil.';
-    if ((await hashPass(pass, a.salt)) !== a.hash) return 'Mot de passe incorrect.';
-    S.loggedIn = true; save(); return '';
-  }
 
   // ---------- Amis ----------
   const isFriend = (id) => S.friends.includes(id);
@@ -241,7 +227,7 @@
   const handles = (arg) => ['friends', 'ranking', 'duels', 'u', 'account'].includes(arg);
   function view(arg) {
     const r = route();
-    if (!me() && arg !== 'u') return authView(arg);
+    if (!me()) return noAccountView(arg);
     if (arg === 'friends') return friendsView();
     if (arg === 'ranking') return rankingView(r[2]);
     if (arg === 'duels') return r[2] ? duelView(r[2]) : duelsView();
@@ -255,66 +241,13 @@
   }
   const page = (cur, html) => { $app().innerHTML = tabs(cur) + `<div class="social-page pop-in">${html}</div>`; };
 
-  // ----- Création de compte / connexion -----
-  function authView(arg, mode) {
-    const cur = arg || 'friends';
-    const P = R.profile;
-    mode = mode || (S.account && S.account.email ? 'login' : 'pseudo');
-    const back = S.account && S.account.email;
-    page(cur, `
-      <section class="social-hero">
-        <div class="social-hero-ava">${avatar('me', 96)}</div>
-        <div><h1>Joue avec tes amis</h1><p class="muted">Ajoute tes amis, compare vos scores et défie-les sur les mêmes questions.</p></div>
-      </section>
-      <div class="social-card social-auth">
-        <div class="seg" id="social-mode">
-          <button data-m="pseudo" class="${mode === 'pseudo' ? 'on' : ''}">Pseudo seul</button>
-          <button data-m="email" class="${mode === 'email' ? 'on' : ''}">E-mail + mot de passe</button>
-          ${back ? `<button data-m="login" class="${mode === 'login' ? 'on' : ''}">Se connecter</button>` : ''}
-        </div>
-        <form id="social-form" novalidate>
-          ${mode === 'login' ? `
-            <label class="field"><span>E-mail ou pseudo</span><input name="ident" autocomplete="username" required></label>
-            <label class="field"><span>Mot de passe</span><input name="pass" type="password" autocomplete="current-password" required></label>`
-          : `
-            <label class="field"><span>Pseudo <em>(visible par tes amis)</em></span><input name="pseudo" maxlength="20" autocomplete="nickname" value="${esc((P.name || '').replace(/\s+/g, '_'))}" required></label>
-            ${mode === 'email' ? `
-            <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" required></label>
-            <label class="field"><span>Mot de passe <em>(8 caractères minimum)</em></span><input name="pass" type="password" minlength="8" autocomplete="new-password" required></label>` : ''}`}
-          <p class="social-err" id="social-err" role="alert"></p>
-          <button class="btn primary big-btn" type="submit">${mode === 'login' ? 'Se connecter' : 'Créer mon compte'}</button>
-        </form>
-        <p class="muted social-small">${mode === 'pseudo' ? 'Le plus rapide. Ton compte reste lié à cet appareil : tu pourras ajouter un e-mail plus tard.' : mode === 'email' ? 'Ton e-mail sert seulement à te connecter. Il n’est jamais montré à tes amis.' : ''}</p>
-      </div>
-      <p class="notice social-notice">${I('lock')} Version d’essai : ton compte est enregistré sur cet appareil uniquement, et les autres joueurs sont simulés en attendant l’ouverture en ligne.</p>`);
-    document.getElementById('social-mode').onclick = (e) => { const b = e.target.closest('button'); if (b) authView(arg, b.dataset.m); };
-    const form = document.getElementById('social-form');
-    const err = (t) => { document.getElementById('social-err').textContent = t; };
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      const f = Object.fromEntries(new FormData(form));
-      if (mode === 'login') {
-        const m = await login((f.ident || '').trim(), f.pass || '');
-        if (m) return err(m);
-        R.toast(I('check'), 'Connecté'); return view(cur === 'me' ? 'friends' : cur);
-      }
-      const pseudo = (f.pseudo || '').trim();
-      const pe = pseudoError(pseudo); if (pe) return err(pe);
-      if (mode === 'email') {
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email || '')) return err('Adresse e-mail invalide.');
-        if ((f.pass || '').length < 8) return err('Le mot de passe doit faire au moins 8 caractères.');
-      }
-      try { await createAccount({ pseudo, email: mode === 'email' ? f.email.trim() : null, pass: f.pass }); }
-      catch (x) { return err('Impossible de créer le compte sur ce navigateur.'); }
-      if (!R.profile.name) R.setProfile({ name: pseudo });
-      R.toast(I('sparkle'), `Bienvenue ${esc(pseudo)} ! Ton code ami : ${S.account.code}`);
-      R.confetti(60);
-      view(cur === 'me' ? 'friends' : cur);
-    };
+  // ----- Sans compte (normalement impossible : l'appli demande de se connecter au lancement) -----
+  function noAccountView(arg) {
+    page(arg || 'friends', `<div class="social-card center"><h1>Connecte-toi</h1><p class="muted">Connecte-toi à ton compte pour retrouver tes amis, le classement et les défis.</p><a class="btn primary" href="#">Retour à l’accueil</a></div>`);
   }
 
   // ----- Compte -----
-  function accountView(mode) {
+  function accountView() {
     const a = me();
     page('friends', `
       <a class="social-back" href="#profile/friends">${I('arrow')} Amis</a>
@@ -322,32 +255,12 @@
       <div class="social-card">
         <div class="social-kv"><span>Pseudo</span><b>${esc(a.pseudo)}</b></div>
         <div class="social-kv"><span>Code ami</span><b>${a.code}</b></div>
-        <div class="social-kv"><span>Connexion</span><b>${a.email ? esc(a.email) : 'Pseudo seul (cet appareil)'}</b></div>
         <div class="social-kv"><span>Créé le</span><b>${new Date(a.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</b></div>
       </div>
-      ${a.email ? '' : `<div class="social-card"><h2>Sécuriser mon compte</h2><p class="muted">Ajoute un e-mail et un mot de passe pour pouvoir te reconnecter.</p>
-        <form id="social-up" novalidate>
-          <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" required></label>
-          <label class="field"><span>Mot de passe <em>(8 caractères minimum)</em></span><input name="pass" type="password" minlength="8" autocomplete="new-password" required></label>
-          <p class="social-err" id="social-err" role="alert"></p>
-          <button class="btn primary" type="submit">Ajouter</button></form></div>`}
-      <div class="row">
-        ${a.email ? '<button class="btn ghost" id="social-logout">Se déconnecter</button>' : ''}
-        <button class="btn ghost social-danger" id="social-del">Supprimer mon compte</button>
-      </div>`);
-    const up = document.getElementById('social-up');
-    if (up) up.onsubmit = async (e) => {
-      e.preventDefault(); const f = Object.fromEntries(new FormData(up));
-      const err = (t) => { document.getElementById('social-err').textContent = t; };
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email || '')) return err('Adresse e-mail invalide.');
-      if ((f.pass || '').length < 8) return err('Le mot de passe doit faire au moins 8 caractères.');
-      a.email = f.email.trim(); a.salt = randCode(16); a.hash = await hashPass(f.pass, a.salt); save();
-      R.toast(I('lock'), 'Compte sécurisé'); accountView();
-    };
-    const lo = document.getElementById('social-logout');
-    if (lo) lo.onclick = () => { S.loggedIn = false; save(); updateDot(); location.hash = 'profile/friends'; };
+      <p class="muted">Ton pseudo, ton mot de passe et la déconnexion se gèrent dans les <a href="#profile/settings">réglages du profil</a>.</p>
+      <div class="row"><button class="btn ghost social-danger" id="social-del">Effacer mes amis et mes défis</button></div>`);
     document.getElementById('social-del').onclick = () => {
-      if (!confirm('Supprimer ton compte, tes amis et tes défis ? Ta progression (XP, pièces, badges) est conservée. C’est définitif.')) return;
+      if (!confirm('Effacer tes amis et tes défis ? Ton compte et ta progression sont conservés. C’est définitif.')) return;
       localStorage.removeItem(KEY); load(); updateDot(); location.hash = 'profile';
     };
   }

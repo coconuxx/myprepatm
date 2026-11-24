@@ -1,7 +1,15 @@
 {
- "version": "0.1.2",
+ "version": "0.1.3",
  "date": "2026-11-24",
  "history": [
+  {
+   "version": "0.1.3",
+   "date": "2026-11-24",
+   "notes": [
+    "Comptes avec pseudo et mot de passe : ta progression est gardée à chaque ouverture",
+    "Plusieurs comptes possibles sur un même téléphone"
+   ]
+  },
   {
    "version": "0.1.2",
    "date": "2026-11-24",
