@@ -2,6 +2,8 @@
 (function () {
   const { rand, pick, build, fmt, gcd } = TM.util;
   const T = 'calcul';
+  // n entiers différents entre min et max, dans le désordre
+  const shuffleNums = (n, min, max) => { const set = new Set(); while (set.size < n) set.add(rand(min, max)); return TM.util.shuffle([...set]); };
 
   const templates = [
     // Pourcentage d'évolution
@@ -15,6 +17,8 @@
         correct: p,
         distractors: [Math.round(((b - a) / b) * 1000) / 10, b - a, p / 2, p * 2],
         explanation: `Évolution = (${fmt(b)} − ${fmt(a)}) / ${fmt(a)} = ${fmt(b - a)} / ${fmt(a)} = ${fmt(p)} %. Piège : diviser par la valeur d'arrivée.`,
+        tip: 'Un pourcentage d’évolution se calcule toujours par rapport à la valeur de départ.',
+        steps: [`Hausse : ${fmt(b)} − ${fmt(a)} = ${fmt(b - a)} €.`, `On divise par le prix de départ : ${fmt(b - a)} / ${fmt(a)} = ${fmt((b - a) / a)}.`, `Soit <b>${fmt(p)} %</b>. Piège : diviser par ${fmt(b)}.`],
       });
     },
     // Hausses successives
@@ -30,6 +34,8 @@
         correct: res,
         distractors: [p1 + (down ? -p2 : p2), res + 5, res - 5, -res === res ? res + 10 : -res],
         explanation: `On multiplie les coefficients : ${fmt(1 + p1 / 100)} × ${fmt(1 + (down ? -p2 : p2) / 100)} = ${fmt(coef)}, soit ${res > 0 ? '+' : ''}${fmt(res)} %. Les pourcentages ne s'additionnent pas.`,
+        tip: 'Des pourcentages successifs ne s’additionnent pas : on multiplie les coefficients.',
+        steps: [`Coefficients : × ${fmt(1 + p1 / 100)} puis × ${fmt(1 + (down ? -p2 : p2) / 100)}.`, `Produit : ${fmt(coef)}.`, `Évolution : <b>${res > 0 ? '+' : ''}${fmt(res)} %</b>.`],
       });
     },
     // Vitesse moyenne aller-retour
@@ -60,17 +66,21 @@
     },
     // Moyenne
     () => {
-      const n = pick([4, 5]);
-      const m = rand(11, 15);
-      const notes = Array.from({ length: n }, () => rand(8, 17));
-      const sum = notes.reduce((a, b) => a + b, 0);
-      const need = m * (n + 1) - sum;
+      // La note demandée doit être possible (entre 0 et 20) et différente de la moyenne visée
+      let n, m, notes, sum, need;
+      do {
+        n = pick([4, 5]); m = rand(11, 15);
+        notes = Array.from({ length: n }, () => rand(8, 17));
+        sum = notes.reduce((a, b) => a + b, 0); need = m * (n + 1) - sum;
+      } while (need < 0 || need > 20 || need === m);
       return build({
         theme: T, keepOrder: true,
         prompt: `Un élève a obtenu les notes ${notes.join(', ')}. Quelle note doit-il avoir au prochain devoir (même coefficient) pour obtenir exactement ${m} de moyenne ?`,
         correct: need,
         distractors: [need + 1, need - 1, m, need + 2],
         explanation: `Total nécessaire : ${m} × ${n + 1} = ${m * (n + 1)}. Total actuel : ${sum}. Note requise : ${m * (n + 1)} − ${sum} = ${need}.`,
+        tip: 'On raisonne sur le total des points, pas sur les moyennes.',
+        steps: [`Total visé : ${m} × ${n + 1} = ${m * (n + 1)}.`, `Total actuel : ${notes.join(' + ')} = ${sum}.`, `Note à obtenir : ${m * (n + 1)} − ${sum} = <b>${need}</b>.`],
       });
     },
     // Fraction d'un tout
@@ -207,16 +217,18 @@
     },
     // Âges
     () => {
-      const child = rand(4, 12); const k = pick([3, 4, 5]); const parent = child * k;
-      const years = (() => { // dans combien d'années parent = 2 × enfant ?
-        return parent - 2 * child;
-      })();
+      // Âges réalistes : la mère a eu son enfant entre 22 et 38 ans (avant : « une mère de 12 ans »)
+      const child = rand(2, 14); const gap = rand(22, 38); const parent = child + gap;
+      const years = gap - child; // dans combien d'années parent = 2 × enfant ? (toujours > 0 car gap ≥ 22 > child)
       return build({
         theme: T, keepOrder: true, format: (x) => fmt(x) + ' ans',
         prompt: `Une mère a ${parent} ans et son fils ${child} ans. Dans combien d'années la mère aura-t-elle exactement le double de l'âge de son fils ?`,
         correct: years,
-        distractors: [years + 2, years - 2 > 0 ? years - 2 : years + 4, parent - child, child],
+        distractors: [years + 2, years - 2 > 0 ? years - 2 : years + 4, gap, child, Math.round(years / 2) || years + 6],
         explanation: `${parent} + n = 2(${child} + n) ⇒ n = ${parent} − ${2 * child} = ${years}.`,
+        tip: `L’écart d’âge (${gap} ans) ne change jamais : il faut que le fils atteigne ${gap} ans, soit dans ${gap}&nbsp;−&nbsp;${child} = ${years}&nbsp;ans.`,
+        steps: [`Dans n années : mère ${parent} + n, fils ${child} + n.`, `« Le double » : ${parent} + n = 2 × (${child} + n) = ${2 * child} + 2n.`, `Donc n = ${parent} − ${2 * child} = <b>${years}</b>.`, `Vérification : ${parent + years} = 2 × ${child + years} ✓`],
+        fig: { type: 'ages', parent, child, years },
       });
     },
     // Intérêts / remise
@@ -230,6 +242,8 @@
         correct: ht,
         distractors: [price * 0.8, price - 20, price / 1.02, price * 1.2],
         explanation: `TTC = HT × 1,2 ⇒ HT = ${price} / 1,2 = ${fmt(ht)} €. Piège : retirer 20 % du TTC (${fmt(price * 0.8)} €).`,
+        tip: 'Pour enlever la TVA, on divise par 1,2 : on ne retire pas 20 % du prix TTC.',
+        steps: ['TTC = HT × 1,2.', `HT = ${price} / 1,2 = <b>${fmt(ht)} €</b>.`, `Piège : ${price} × 0,8 = ${fmt(price * 0.8)} €.`],
       });
     },
     // --- Ajouts ---
@@ -252,7 +266,7 @@
       const res = Math.round(((v1 * p1 + v2 * p2) / (v1 + v2)) * 10) / 10;
       return build({
         theme: T, keepOrder: true, format: (x) => fmt(x) + ' %',
-        prompt: `On mélange ${v1} mL d’une solution à ${p1} % de sucre avec ${v2} mL d’une solution à ${p2} %. Quelle est la concentration du mélange ?`,
+        prompt: `On mélange ${v1} mL d’une solution à ${p1} % de sucre avec ${v2} mL ${p2 ? `d’une solution à ${p2} %` : 'd’eau pure'}. Quelle est la concentration en sucre du mélange ?`,
         correct: res,
         distractors: [(p1 + p2) / 2, res + 5, res - 5 > 0 ? res - 5 : res + 8, Math.round(((v1 * p2 + v2 * p1) / (v1 + v2)) * 10) / 10],
         explanation: `Sucre total : ${v1} × ${p1} % + ${v2} × ${p2} % = ${fmt((v1 * p1 + v2 * p2) / 100)} mL, pour ${v1 + v2} mL : ${fmt(res)} %. Piège : la moyenne simple des pourcentages.`,
@@ -271,8 +285,10 @@
     },
     // Part d’une part
     () => {
-      const total = pick([200, 400, 500, 800, 1000]); const a = pick([40, 60, 75]); const b = pick([20, 25, 30, 50]);
-      const res = (total * a * b) / 10000;
+      // Un nombre entier d'élèves à chaque étape (avant : parfois « 112,5 élèves »)
+      let total, a, b, res;
+      do { total = pick([200, 400, 500, 800, 1000]); a = pick([40, 60, 75]); b = pick([20, 25, 30, 50]); res = (total * a * b) / 10000; }
+      while (!Number.isInteger(res) || !Number.isInteger((total * a) / 100));
       return build({
         theme: T, keepOrder: true,
         prompt: `Une école compte ${total} élèves. ${a} % sont en filière commerce, et ${b} % de ceux-ci font un échange à l’étranger. Combien d’élèves de commerce partent à l’étranger ?`,
@@ -330,6 +346,118 @@
         correct: show(num / g, den / g),
         distractors: [show(a + c, b + d), show(a * c, b * d), show(num / g + 1, den / g), show(a + c, b * d), show(num / g, den / g + 1)],
         explanation: `Dénominateur commun ${den} : ${a * d}/${den} + ${c * b}/${den} = ${num}/${den}${g > 1 ? ` = ${num / g}/${den / g}` : ''}. On n’additionne jamais les dénominateurs.`,
+      });
+    },
+    // --- Ajouts (variété) ---
+    // Pourcentage inverse : retrouver le prix avant une baisse
+    () => {
+      const p = pick([10, 20, 25, 40, 50]); const init = pick([40, 60, 80, 100, 120, 200, 240]);
+      const after = init * (1 - p / 100);
+      return build({
+        theme: T, keepOrder: true, format: (x) => fmt(x) + ' €',
+        prompt: `Après une remise de ${p} %, un article coûte ${fmt(after)} €. Quel était son prix avant la remise ?`,
+        correct: init,
+        distractors: [after * (1 + p / 100), after + p, init + 10, init - 10],
+        explanation: `Prix final = prix initial × ${fmt(1 - p / 100)} ⇒ prix initial = ${fmt(after)} / ${fmt(1 - p / 100)} = ${fmt(init)} €. Piège : ajouter ${p} % au prix final (${fmt(after * (1 + p / 100))} €).`,
+        tip: `Pour annuler une baisse de ${p} %, on divise par ${fmt(1 - p / 100)} : rajouter ${p} % ne suffit pas.`,
+        steps: [`Prix final = prix initial × ${fmt(1 - p / 100)}.`, `Prix initial = ${fmt(after)} / ${fmt(1 - p / 100)} = <b>${fmt(init)} €</b>.`],
+      });
+    },
+    // Échelle d'une carte
+    () => {
+      const scale = pick([25000, 50000, 100000, 200000]); const cm = pick([2, 3, 4, 5, 6, 8]);
+      const km = (cm * scale) / 100000;
+      return build({
+        theme: T, keepOrder: true, format: (x) => fmt(x) + ' km',
+        prompt: `Sur une carte au 1/${fmt(scale)}, deux villages sont séparés de ${cm} cm. Quelle est la distance réelle ?`,
+        correct: km,
+        distractors: [km * 10, km / 10, km * 100, km + cm],
+        explanation: `1 cm sur la carte = ${fmt(scale)} cm = ${fmt(scale / 100000)} km. ${cm} × ${fmt(scale / 100000)} = ${fmt(km)} km.`,
+      });
+    },
+    // Rencontre de deux trains
+    () => {
+      const v1 = pick([60, 80, 90, 100, 120]); const v2 = pick([40, 60, 80, 100]); const t = pick([0.5, 1, 1.5, 2]);
+      const d = (v1 + v2) * t; const min = t * 60;
+      return build({
+        theme: T, keepOrder: true, format: (x) => fmt(x) + ' min',
+        prompt: `Deux trains distants de ${fmt(d)} km roulent l’un vers l’autre, à ${v1} km/h et à ${v2} km/h. Au bout de combien de temps se croisent-ils ?`,
+        correct: min,
+        distractors: [Math.round((d / v1) * 60), Math.round((d / v2) * 60), min * 2, min + 15],
+        explanation: `Ils se rapprochent à ${v1} + ${v2} = ${v1 + v2} km/h. Temps = ${fmt(d)} / ${v1 + v2} = ${fmt(t)} h = ${fmt(min)} min.`,
+        tip: `Quand deux mobiles se rapprochent, leurs vitesses s’additionnent : ${v1 + v2} km/h.`,
+        steps: [`Vitesse de rapprochement : ${v1} + ${v2} = ${v1 + v2} km/h.`, `Temps = distance / vitesse = ${fmt(d)} / ${v1 + v2} = ${fmt(t)} h.`, `${fmt(t)} h = <b>${fmt(min)} min</b>.`],
+        fig: { type: 'trains', d, v1, v2, t },
+      });
+    },
+    // Médiane
+    () => {
+      const vals = shuffleNums(7, 3, 30); const sorted = vals.slice().sort((a, b) => a - b); const med = sorted[3];
+      const mean = Math.round(vals.reduce((a, b) => a + b, 0) / 7);
+      return build({
+        theme: T, keepOrder: true,
+        prompt: `Quelle est la médiane de la série : ${vals.join(' ; ')} ?`,
+        correct: med,
+        distractors: [vals[3], mean, sorted[2], sorted[4]],
+        explanation: `On range la série : ${sorted.join(' ; ')}. Avec 7 valeurs, la médiane est la 4ᵉ : ${med}. Piège : prendre la valeur du milieu sans trier (${vals[3]}).`,
+      });
+    },
+    // Piquets et intervalles
+    () => {
+      const k = pick([2, 3, 4, 5, 6, 10]); const n = rand(6, 15); const L = k * n;
+      return build({
+        theme: T, keepOrder: true,
+        prompt: `On plante un arbre tous les ${k} m le long d’une allée droite de ${L} m, avec un arbre à chaque extrémité. Combien d’arbres plante-t-on ?`,
+        correct: n + 1,
+        distractors: [n, n + 2, n - 1, 2 * n],
+        explanation: `${L} / ${k} = ${n} intervalles. Il y a toujours un arbre de plus que d’intervalles : ${n + 1}.`,
+        tip: 'Avec un arbre à chaque bout, il y a toujours un arbre de plus que d’intervalles.',
+        fig: { type: 'posts', n, k },
+      });
+    },
+    // Durées et horaires
+    () => {
+      const h = rand(13, 20), m = pick([5, 10, 15, 20, 35, 40, 45, 50]), d = pick([95, 105, 110, 125, 135, 140, 155]);
+      const end = h * 60 + m + d; const hh = (x) => `${Math.floor(x / 60) % 24} h ${String(x % 60).padStart(2, '0')}`;
+      return build({
+        theme: T, format: (x) => x,
+        prompt: `Un film commence à ${hh(h * 60 + m)} et dure ${d} minutes. À quelle heure se termine-t-il ?`,
+        correct: hh(end),
+        distractors: [hh(end + 10), hh(end - 10), hh(end + 60), hh(h * 60 + m + Math.floor(d / 100) * 60 + (d % 100)), hh(end - 60)],
+        explanation: `${d} min = ${Math.floor(d / 60)} h ${d % 60} min. ${hh(h * 60 + m)} + ${Math.floor(d / 60)} h ${d % 60} = ${hh(end)}.`,
+      });
+    },
+    // Permutations
+    () => {
+      const n = rand(3, 6); const f = (k) => (k <= 1 ? 1 : k * f(k - 1));
+      return build({
+        theme: T, keepOrder: true,
+        prompt: `De combien de façons différentes peut-on asseoir ${n} personnes sur ${n} chaises alignées ?`,
+        correct: f(n),
+        distractors: [n * n, n * (n - 1), f(n - 1), f(n) / 2, n * 2],
+        explanation: `${n} choix pour la 1ʳᵉ chaise, ${n - 1} pour la 2ᵉ… soit ${n}! = ${Array.from({ length: n }, (_, i) => n - i).join(' × ')} = ${f(n)}.`,
+      });
+    },
+    // Points de pourcentage
+    () => {
+      const a = pick([10, 20, 25, 40, 50]); const q = pick([20, 50, 100]); const b = a * (1 + q / 100);
+      return build({
+        theme: T, keepOrder: true, format: (x) => fmt(x) + ' %',
+        prompt: `Le taux de réussite d’un concours passe de ${a} % à ${fmt(b)} %. De quel pourcentage a-t-il augmenté ?`,
+        correct: q,
+        distractors: [b - a, q / 2, (b - a) * 2, q + 10],
+        explanation: `Il gagne ${fmt(b - a)} points, soit une hausse de ${fmt(b - a)} / ${a} = ${q} %. Piège : confondre points et pourcentage.`,
+      });
+    },
+    // Règle de trois
+    () => {
+      const p = pick([1.2, 1.5, 2.4, 3, 3.5]); const w1 = pick([2, 4, 5]); const w2 = pick([3, 6, 7, 9]);
+      return build({
+        theme: T, keepOrder: true, format: (x) => fmt(x) + ' €',
+        prompt: `${w1} kg de pommes coûtent ${fmt(w1 * p)} €. Combien coûtent ${w2} kg ?`,
+        correct: w2 * p,
+        distractors: [w1 * p + w2 - w1, (w1 * p * w1) / w2, w2 * p + p, w2 * p - p],
+        explanation: `Prix au kilo : ${fmt(w1 * p)} / ${w1} = ${fmt(p)} €. ${w2} × ${fmt(p)} = ${fmt(w2 * p)} €.`,
       });
     },
   ];

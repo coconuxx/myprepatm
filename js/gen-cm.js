@@ -14,11 +14,11 @@
   const templates = [
     () => {
       const x = rand(2, 15), y = rand(1, 12);
-      return { q: 'Quelle est la valeur de x ?', p: `x + y = ${x + y}`, r: `x − y = ${x - y}`, type: 'both',
+      return { q: 'Quelle est la valeur de x ?', p: `x + y = ${x + y}`, r: `x − y = ${String(x - y).replace('-', '−')}`, type: 'both',
         why: `Chaque équation seule a une infinité de solutions. Ensemble : 2x = ${2 * x}, donc x = ${x}.` };
     },
     () => {
-      const x = rand(2, 9), k = 3 * x - 7;
+      const x = rand(3, 9), k = 3 * x - 7; // k positif
       return { q: 'Quelle est la valeur de x ?', p: `3x − 7 = ${k}`, r: `x² = ${x * x}`, type: 'p',
         why: `(1) donne x = ${x}. (2) donne x = ${x} ou x = −${x} : insuffisant seule.` };
     },
@@ -129,9 +129,10 @@
         why: `Ensemble : ${pr} × ${1 - rm / 100} = ${TM.util.fmt(pr * (1 - rm / 100))} €.` };
     },
     () => {
+      // Les deux informations doivent être vraies en même temps (avant : un angle de 45° impossible dans ce triangle)
       const [a, b, c] = pick([[3, 4, 5], [6, 8, 10], [5, 12, 13]]);
-      return { q: 'Le triangle ABC est-il rectangle ?', p: `Ses côtés mesurent ${a}, ${b} et ${c} cm`, r: 'L’angle en A mesure 45°', type: 'p',
-        why: `(1) : ${a}² + ${b}² = ${c}², donc rectangle (réciproque de Pythagore). (2) : un angle de 45° ne dit rien des autres angles.` };
+      return { q: 'Le triangle ABC est-il rectangle ?', p: `Ses côtés mesurent ${a}, ${b} et ${c} cm`, r: `Son périmètre mesure ${a + b + c} cm`, type: 'p',
+        why: `(1) : ${a}² + ${b}² = ${c}², donc rectangle (réciproque de Pythagore). (2) : un périmètre ne dit rien des angles.` };
     },
     () => {
       const d = rand(1, 9);
@@ -159,6 +160,48 @@
       const age = rand(10, 30);
       return { q: 'Quel âge a Léo ?', p: 'Dans 5 ans, il aura le double de l’âge qu’il avait il y a 5 ans', r: `Sa sœur a ${rand(2, 6)} ans de moins que lui`, type: 'p',
         why: '(1) : L + 5 = 2(L − 5) donne L = 15. (2) : un écart ne donne pas l’âge.' };
+    },
+    // --- Ajouts (variété) ---
+    () => {
+      const c = rand(2, 6), s = rand(1, 4);
+      return { q: 'Combien coûte un cahier ?', p: `4 cahiers identiques coûtent ${4 * c} €`, r: `Un cahier et un stylo coûtent ensemble ${c + s} €`, type: 'p',
+        why: `(1) : ${4 * c} / 4 = ${c} €. (2) : une seule équation pour deux prix inconnus.` };
+    },
+    () => ({ q: 'L’entier n est-il un multiple de 10 ?', p: 'n est pair', r: 'n est divisible par 5', type: 'both',
+      why: '(1) seule : 4 est pair mais pas multiple de 10. (2) seule : 15 est divisible par 5 mais pas par 10. Ensemble : divisible par 2 et par 5, donc par 10.' }),
+    () => {
+      const m = rand(5, 20), d = rand(1, 6);
+      return { q: 'Quelle est la moyenne de a et b ?', p: `a + b = ${2 * m}`, r: `a − b = ${d}`, type: 'p',
+        why: `(1) : moyenne = ${2 * m} / 2 = ${m}. (2) : un écart ne donne pas la moyenne.` };
+    },
+    () => {
+      const k = rand(4, 8);
+      return { q: `x est-il supérieur à ${k} ?`, p: `x > ${k + 2}`, r: `x < ${k + 4}`, type: 'p',
+        why: `(1) : x > ${k + 2} > ${k}, donc oui. (2) : x peut valoir ${k + 3} (oui) ou 0 (non).` };
+    },
+    () => {
+      const base = pick([3, 4, 5]), km = pick([2, 2.5, 3]), d = rand(4, 12);
+      return { q: 'Combien coûte une course en taxi ?', p: `La prise en charge coûte ${base} €, puis ${TM.util.fmt(km)} € par kilomètre`, r: `La course fait ${d} km`, type: 'both',
+        why: `Ensemble : ${base} + ${TM.util.fmt(km)} × ${d} = ${TM.util.fmt(base + km * d)} €. Seule, aucune ne suffit.` };
+    },
+    () => ({ q: 'L’entier n est-il un nombre premier ?', p: 'n est strictement compris entre 24 et 28', r: 'n est impair', type: 'p',
+      why: '(1) : n vaut 25, 26 ou 27, aucun n’est premier (25 = 5², 26 = 2 × 13, 27 = 3³) : la réponse est « non » à coup sûr, ce qui suffit. (2) : 9 est impair non premier, 7 est impair premier.' }),
+    () => ({ q: 'Quelle est la valeur de x ?', p: 'x² − 5x + 6 = 0', r: 'x > 2', type: 'both',
+      why: '(1) : x = 2 ou x = 3. (2) : infinité de valeurs. Ensemble : x = 3.' }),
+    () => {
+      const l = pick([1500, 2000, 2500, 3000]), p = pick([10, 20, 25]);
+      return { q: 'Quel est le salaire de Marc ?', p: `Marc gagne ${p} % de plus que Léa`, r: `Léa gagne ${TM.util.fmt(l)} € par mois`, type: 'both',
+        why: `Ensemble : ${TM.util.fmt(l)} × ${TM.util.fmt(1 + p / 100)} = ${TM.util.fmt(l * (1 + p / 100))} €. Seule, aucune ne suffit.` };
+    },
+    () => {
+      const g = rand(5, 15);
+      return { q: 'Combien y a-t-il de filles dans le groupe ?', p: `Le groupe compte ${3 * g} personnes`, r: 'Il y a deux fois plus de filles que de garçons', type: 'both',
+        why: `Ensemble : F + G = ${3 * g} et F = 2G ⇒ G = ${g}, F = ${2 * g}. Seule, aucune ne suffit.` };
+    },
+    () => {
+      const a = pick([40, 50, 65, 70]);
+      return { q: 'Le triangle ABC est-il isocèle ?', p: `Deux de ses angles mesurent ${a}° et ${180 - 2 * a}°`, r: 'Son périmètre mesure 20 cm', type: 'p',
+        why: `(1) : le troisième angle vaut 180 − ${a} − ${180 - 2 * a} = ${a}°, deux angles égaux : isocèle. (2) : un périmètre ne dit rien de la forme.` };
     },
   ];
 

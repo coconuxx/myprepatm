@@ -49,7 +49,7 @@ TM.util = {
     return r.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
   },
   // Construit une question à 5 choix à partir d'une bonne réponse + pièges
-  build({ theme, prompt, correct, distractors, explanation, format = (x) => TM.util.fmt(x), passage, keepOrder }) {
+  build({ theme, prompt, correct, distractors, explanation, format = (x) => TM.util.fmt(x), passage, keepOrder, tip, steps, fig }) {
     const seen = new Set();
     const key = (v) => String(format(v));
     const opts = [];
@@ -60,7 +60,9 @@ TM.util = {
     let guard = 0;
     while (opts.length < 5 && guard++ < 50 && typeof correct === 'number') {
       const step = Math.max(1, Math.round(Math.abs(correct) * 0.1));
-      push(correct + TM.util.pick([-3, -2, -1, 1, 2, 3]) * step);
+      const cand = correct + TM.util.pick([-3, -2, -1, 1, 2, 3]) * step;
+      if (correct > 0 && cand <= 0) continue; // pas de « −1 h » ou « 0 € » quand la réponse est positive
+      push(cand);
     }
     const chosen = [opts[0], ...TM.util.shuffle(opts.slice(1)).slice(0, 4)];
     const order = keepOrder ? chosen : TM.util.shuffle(chosen);
@@ -72,6 +74,7 @@ TM.util = {
       choices: order.map(key),
       answer: order.map(key).indexOf(key(correct)),
       explanation,
+      tip, steps, fig, // correction courte et visuelle (js/correction.js)
     };
   },
   // Question à choix fixes (banques)

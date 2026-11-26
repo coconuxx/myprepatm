@@ -176,8 +176,19 @@
     const st = statsBySubtest();
     const tried = F.subtests.filter((t) => st[t.id].n >= 5);
     if (tried.length < 3) return null;
-    const avg = tried.reduce((a, t) => a + st[t.id].c / st[t.id].n, 0) / tried.length;
-    return { value: Math.round((avg * 600) / 10) * 10, src: 'projection de ta réussite' };
+    // Même barème que l'examen blanc : 100 × réussite par sous-test, 6 sous-tests
+    const per = tried.reduce((a, t) => a + subScore(st[t.id].c, st[t.id].n), 0) / tried.length;
+    return { value: Math.max(0, Math.round((per * 6) / 10) * 10), src: 'projection de ta réussite' };
+  }
+  // ---------- Barème TAGE MAGE (FAQ officielle tagemage.fr, vérifiée le 26/11/2026) ----------
+  // Score total sur 600, 6 sous-tests de 15 questions (90 au total) : chaque sous-test vaut 100 points.
+  // Les erreurs et les absences de réponse ne retirent aucun point (l'ancien barème allait de −150 à 600).
+  const subScore = (correct, total) => (total ? Math.max(0, Math.min(100, (correct * 100) / total)) : 0);
+  function scoreSection(sec) {
+    const c = sec.answers.filter((a, i) => a === sec.questions[i].answer).length;
+    const blank = sec.answers.filter((a) => a === null || a === undefined).length;
+    const w = sec.questions.length - c - blank;
+    return { correct: c, wrong: w, blank, total: sec.questions.length, score: Math.round(subScore(c, sec.questions.length)) };
   }
   function nextStep() {
     const P = R.profile; const st = statsBySubtest(); const goal = R.DAILY_GOAL;
@@ -566,8 +577,9 @@
         ${qu.passage ? `<details class="passage" open><summary>${qu.passage.title}</summary><div class="passage-body">${qu.passage.body}</div></details>` : ''}
         <div class="qbox slide-in" id="qbox">
           <div class="prompt">${qu.prompt}</div>
-          <div class="choices">${choicesHTML(qu, qu.theme === 'cm', sel, revealed, state.fifty && state.fifty[state.q])}</div>
+          <div class="choices ${revealed ? 'folded' : ''}" id="choices">${choicesHTML(qu, qu.theme === 'cm', sel, revealed, state.fifty && state.fifty[state.q])}</div>
           ${practice && !revealed ? jokerBtn(state.fifty && state.fifty[state.q]) : ''}
+          ${revealed && TM.correction ? `<button type="button" class="cor-all" id="cor-all">Afficher toutes les réponses</button>${TM.correction.card(qu, sel)}` : ''}
           ${state.mode === 'exam' ? `<div class="row nav-row">
             <button class="btn ghost" id="prev" ${state.q === 0 ? 'disabled' : ''}>Précédente</button>
             <button class="btn ghost" id="flag">${sec.flags[state.q] ? 'Marquée' : 'Marquer'}</button>
@@ -577,7 +589,10 @@
       </div>
       ${practice ? `<div class="checkbar ${revealed ? (ok ? 'good' : 'bad') : ''}">
         <div class="checkbar-in">
-          ${revealed ? `<div class="fb-m quiz-ava">${ok && R.getCombo() >= 5 ? `<span class="quiz-combo-bubble">${R.comboLine(R.getCombo())}</span>` : ''}${R.mascotSVG({ size: 64, mood: ok ? 'happy' : 'sad', celebrate: ok && R.getCombo() >= 5 })}</div><div class="fb"><div class="fb-h">${ok ? pick(['Excellent !', 'Bien joué !', 'Parfait !', 'Bravo !']) : sel === null ? 'Temps écoulé' : 'Pas tout à fait…'}</div><div class="fb-e">${ok ? '' : `<strong>Réponse : ${LETTERS[qu.answer]}.</strong> `}${qu.explanation}</div></div>` : `<div class="fb-m quiz-ava quiz-ava-think">${R.mascotSVG({ size: 64, mood: 'think' })}</div><div class="fb muted kbd-hint">Astuce : touches A–E puis Entrée</div>`}
+          ${revealed ? (TM.correction
+            ? (TM.LESSONS && TM.LESSONS[qu.theme] ? `<a class="btn ghost cor-lesson" href="#lessons/${qu.theme}" id="cor-lesson">Leçon</a>` : '<span></span>')
+            : `<div class="fb"><div class="fb-e">${ok ? '' : `<strong>Réponse : ${LETTERS[qu.answer]}.</strong> `}${qu.explanation}</div></div>`)
+            : `<div class="fb-m quiz-ava quiz-ava-think">${R.mascotSVG({ size: 64, mood: 'think' })}</div><div class="fb muted kbd-hint">Astuce : touches A–E puis Entrée</div>`}
           <button class="btn ${revealed ? (ok ? 'success' : 'danger') : 'primary'} big-btn" id="${revealed ? 'continue' : 'check'}" ${!revealed && sel === null ? 'disabled' : ''}>${revealed ? (last ? 'Voir les résultats' : 'Continuer') : 'Vérifier'}</button>
         </div></div>` : ''}`;
 
@@ -589,6 +604,9 @@
     on('check', check);
     on('continue', next);
     on('flag', () => { sec.flags[state.q] = !sec.flags[state.q]; quizView(); });
+    on('cor-all', () => { document.getElementById('choices')?.classList.remove('folded'); document.getElementById('cor-all')?.remove(); });
+    const lessonLink = document.getElementById('cor-lesson');
+    if (lessonLink) lessonLink.onclick = (e) => { if (!confirm('Quitter la série pour lire la leçon ? Ta progression dans cette série sera perdue.')) e.preventDefault(); };
     on('joker', () => {
       if (!R.useItem('fifty')) return;
       state.fifty = state.fifty || {};
@@ -598,7 +616,7 @@
     });
     on('finish', () => {
       const blank = sec.answers.filter((a) => a === null).length;
-      if (blank && !confirm(`${blank} question(s) sans réponse. Pas de points négatifs : mieux vaut répondre au hasard. Terminer quand même ?`)) return;
+      if (blank && !confirm(`${blank} question(s) sans réponse. Une erreur ne retire aucun point : mieux vaut répondre au hasard. Terminer quand même ?`)) return;
       nextSection();
     });
 
@@ -620,6 +638,13 @@
       else if (!good) TM.errors.add(qu);
       R.sound(good ? 'ok' : 'ko');
       quizView();
+      // On fait glisser la page jusqu'à la correction, en gardant la question visible au-dessus
+      const cor = document.getElementById('cor');
+      if (cor) requestAnimationFrame(() => {
+        const r = cor.getBoundingClientRect(); const bar = document.querySelector('.checkbar');
+        const limit = innerHeight - (bar ? bar.offsetHeight : 0) - 12;
+        if (r.bottom > limit) window.scrollBy({ top: Math.min(r.bottom - limit, r.top - 80), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      });
       const box = document.getElementById('qbox');
       if (!good && box) box.classList.add('shake');
       const okEl = document.querySelector('.choice.ok');
@@ -688,14 +713,15 @@
     const results = {};
     state.sections.forEach((sec) => {
       if (sec.id === 'mix') return;
-      results[sec.id] = { correct: sec.answers.filter((a, i) => a === sec.questions[i].answer).length, total: sec.questions.length };
+      results[sec.id] = scoreSection(sec);
     });
     const all = state.sections.flatMap((s) => s.questions.map((q, i) => s.answers[i] === q.answer));
     const correct = all.filter(Boolean).length;
     const entry = { date: new Date().toISOString(), mode: state.mode, results, correct, total: all.length };
     if (state.mode === 'exam') {
       state.sections.forEach((sec) => sec.questions.forEach((q, i) => { if (sec.answers[i] !== q.answer) TM.errors.add(q); }));
-      entry.score = Object.values(results).reduce((a, r) => a + pctOf(r.correct, r.total), 0);
+      entry.score = Object.values(results).reduce((a, r) => a + r.score, 0); // barème 2025 : +4 / 0 / 0
+      entry.bareme = 'tage';
       entry.full = state.full;
       // XP de l’examen : 5 par bonne réponse + bonus de fin
       const before = R.profile.xp;
@@ -731,7 +757,14 @@
       <div class="result-hero pop-in">
         <div class="result-ico">${TM.icon(mood[0])}</div>
         <h1>${mood[1]}</h1>
-        ${exam ? `<div class="big" data-count="${entry.score}">0<small> / 600</small></div><div class="muted">Score estimé (${entry.correct}/${entry.total} bonnes réponses). Le barème officiel exact n’est pas publié : projection proportionnelle.</div>`
+        ${exam ? (() => {
+          const prev = history().find((e) => e.date !== entry.date && e.mode === 'exam' && e.bareme === 'tage' && !!e.full === !!entry.full);
+          const diff = prev ? entry.score - prev.score : null;
+          const nWrong = Object.values(rs).reduce((a, r) => a + (r.wrong || 0), 0), nBlank = Object.values(rs).reduce((a, r) => a + (r.blank || 0), 0);
+          return `<div class="big" data-count="${entry.score}">0<small> / 600</small></div>
+          ${diff !== null ? `<div class="score-diff ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '+' : '−'}${Math.abs(diff)} points par rapport à ton dernier examen${entry.full ? '' : ' (mini)'}</div>` : ''}
+          <div class="muted score-note">Score estimé : chaque sous-test est noté sur 100 selon ta part de bonnes réponses (${entry.correct} sur ${entry.total}). Depuis 2025, une erreur${nWrong ? ` (tu en as fait ${nWrong})` : ''} ou une question sans réponse${nBlank ? ` (${nBlank} ici)` : ''} ne retire aucun point : il vaut mieux répondre à tout.</div>`;
+        })()
                : `<div class="big" data-count="${entry.correct}">0<small> / ${entry.total}</small></div>`}
         <div class="result-stats">
           <div class="rs"><span class="rs-v">+${state.xp}</span><span class="rs-l">XP gagnés</span></div>
@@ -740,8 +773,9 @@
         </div>
       </div>
       ${exam ? `<h2>Détail par sous-test</h2><div class="breakdown">${Object.entries(rs).map(([id, r]) => {
-        const p = pctOf(r.correct, r.total);
-        return `<div class="brow"><span>${byId(id).icon} ${byId(id).short}</span><div class="bar"><span style="width:${p}%" class="${p < 50 ? 'low' : p < 75 ? 'mid' : ''}"></span></div><span class="bval">${r.correct}/${r.total}</span></div>`;
+        const sc = pctOf(r.correct, r.total); // sur 100, comme le vrai TAGE MAGE
+        const p = Math.max(0, Math.min(100, sc));
+        return `<div class="brow"><span>${byId(id).icon} ${byId(id).short}</span><div class="bar"><span style="width:${p}%" class="${p < 50 ? 'low' : p < 75 ? 'mid' : ''}"></span></div><span class="bval"><b>${String(sc).replace('-', '−')}</b>/100 · ${r.correct}/${r.total}</span></div>`;
       }).join('')}</div>` : ''}
       <h2>Correction</h2>
       ${exam ? `<div class="seg" id="revtabs">${state.sections.map((s, i) => `<button data-i="${i}" class="${i === state.reviewSection ? 'on' : ''}">${byId(s.id).icon} ${byId(s.id).short}</button>`).join('')}</div>` : ''}
@@ -749,8 +783,8 @@
         const a = rsec.answers[i]; const ok = a === q.answer;
         return `<details class="rv ${ok ? 'ok' : 'ko'}"><summary><span class="mark">${ok ? '✓' : a === null ? '–' : '✗'}</span> Question ${i + 1}</summary>
           <div class="prompt">${q.prompt}</div>
-          <p><strong>Ta réponse :</strong> ${a === null ? 'aucune' : q.choices[a]}<br><strong>Bonne réponse :</strong> ${q.choices[q.answer]}</p>
-          <p class="muted">${q.explanation}</p></details>`;
+          <p><strong>Ta réponse :</strong> ${a === null ? 'aucune' : q.choices[a]}${TM.correction ? '' : `<br><strong>Bonne réponse :</strong> ${q.choices[q.answer]}`}</p>
+          ${TM.correction ? TM.correction.card(q, a, { review: true, id: 'cor-' + i }) : `<p class="muted">${q.explanation}</p>`}</details>`;
       }).join('')}</div>
       <div class="row center"><a class="btn primary big-btn" href="#${exam ? 'exam' : state.mode === 'daily' ? 'survival' : state.mode === 'review' ? 'errors' : 'train/' + state.sections[0].id}">${state.mode === 'daily' ? 'Enchaîner en mode survie' : state.mode === 'review' ? 'Retour au carnet' : 'Recommencer'}</a><a class="btn ghost" href="#">Accueil</a></div>`;
     countUp();
@@ -893,87 +927,138 @@
 
   // ---------- Profil ----------
   function profileView(arg) {
+    if (arg && /^settings(-|$)/.test(arg)) return settingsView(arg.replace(/^settings-?/, ''));
     const P = R.profile; const L = R.levelInfo();
-    const stage = TM.mascot.stageFor(L.level);
-    const nextStage = TM.mascot.STAGES.find((s) => s.min > L.level);
     const owned = R.BADGES.filter((b) => P.badges[b.id]).length;
-    const st = statsBySubtest();
+    const st = statsBySubtest(); const weak = weakest(st);
     const exams = history().filter((e) => e.mode === 'exam').reverse().slice(-12);
     const dfmt = (d, o) => new Date(d).toLocaleDateString('fr-FR', o);
     const examPts = exams.map((e) => ({ v: e.score, label: `${dfmt(e.date, { day: 'numeric', month: 'short' })}${e.full ? '' : ' (mini)'}`, short: dfmt(e.date, { day: 'numeric', month: 'short' }) }));
-    const days = Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (13 - i)); return d; });
-    const actBars = days.map((d) => ({ v: P.days[d.toLocaleDateString('fr-CA')] || 0, label: dfmt(d, { weekday: 'long', day: 'numeric', month: 'short' }), short: dfmt(d, { day: 'numeric' }) }));
+    const est = estimateScore(); const dLeft = daysUntilExam();
+    const acc = TM.accounts && TM.accounts.current();
+    const since = acc && acc.created ? dfmt(acc.created, { month: 'long', year: 'numeric' }) : null;
+    // Semaine en cours, du lundi au dimanche
+    const now = new Date(); const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    const week = Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); const key = d.toLocaleDateString('fr-CA'); return { l: 'LMMJVSD'[i], on: (P.days[key] || 0) > 0, today: key === now.toLocaleDateString('fr-CA'), full: dfmt(d, { weekday: 'long' }) }; });
+    const played = week.filter((d) => d.on).length;
+    const badgeList = R.BADGES.slice().sort((a, b) => (P.badges[b.id] ? 1 : 0) - (P.badges[a.id] ? 1 : 0));
     $app.innerHTML = `${TM.social ? TM.social.tabs('me') : ''}
-      <section class="profile-hero pop-in">
-        <div class="profile-m">${R.mascotSVG({ size: 150, cls: 'bob' })}</div>
-        <div class="profile-info">
-          <div class="title-chip">${L.title}</div>
-          <h1>${P.name ? esc(P.name) : 'Mon profil'} · niveau ${L.level}</h1>
-          <div class="muted">Rang ${stage.name}${nextStage ? ` · rang ${nextStage.name} au niveau ${nextStage.min}` : ' · rang maximal'}</div>
-          <div class="xpbar big"><span style="width:${L.pct}%"></span></div>
-          <div class="muted">${L.into} / ${L.need} XP vers le niveau ${L.level + 1}</div>
-          <div class="row"><a class="btn primary" href="#shop/look">Personnaliser mon avatar</a><a class="btn ghost" href="#profile/settings">Réglages</a></div>
-        </div>
-      </section>
-      <section class="kpis">
-        ${P.hideGame ? '' : `<div class="kpi"><span class="kpi-v">${TM.icon('flame', 'fire')} ${R.currentStreak()}</span><span class="kpi-l">série (record ${P.bestStreak})</span></div>`}
-        <div class="kpi"><span class="kpi-v">${P.totalAnswered}</span><span class="kpi-l">questions</span></div>
-        <div class="kpi"><span class="kpi-v">${pctOf(P.totalCorrect, P.totalAnswered)} %</span><span class="kpi-l">réussite</span></div>
-        ${P.hideGame ? '' : `<div class="kpi"><span class="kpi-v">${TM.coin('sm')} ${P.coins}</span><span class="kpi-l">pièces</span></div>`}
-      </section>
-
-      <h2>Progression</h2>
-      <div class="charts">
-        <div class="chart-card">
-          <div class="chart-h"><b>Score aux examens blancs</b><span class="muted">objectif ${P.target}</span></div>
+      <div class="pf pop-in">
+        <div class="pf-top"><h1>Profil</h1><a class="pf-gear" href="#profile/settings" aria-label="Réglages" title="Réglages">${TM.icon('settings')}</a></div>
+        <section class="pf-id">
+          <a class="pf-ring" href="#shop/look" style="--p:${L.pct}" aria-label="Personnaliser mon avatar">${R.mascotSVG({ size: 74 })}</a>
+          <div class="pf-who"><b>${P.name ? esc(P.name) : 'Mon profil'}</b>
+            ${since ? `<span class="muted">Membre depuis ${since}</span>` : `<span class="muted">${esc(L.title)}</span>`}
+            <span class="pf-lv">Niveau ${L.level} · ${L.pct} %</span></div>
+        </section>
+        <section class="pf-score">
+          <span class="pf-score-l">Score estimé</span>
+          ${est ? `<div class="pf-big">${est.value}<span> / 600</span></div>
+            <div class="pf-bar" role="progressbar" aria-label="Progression vers l’objectif" aria-valuemin="0" aria-valuemax="${P.target}" aria-valuenow="${Math.min(est.value, P.target)}"><i style="width:${Math.min(100, Math.round((est.value / P.target) * 100))}%"></i></div>
+            <span class="pf-score-l">Objectif ${P.target}${est.value >= P.target ? ' · atteint, bravo !' : ` · encore ${P.target - est.value} points`}${dLeft !== null && dLeft >= 0 ? ` · examen dans ${dLeft} jour${dLeft > 1 ? 's' : ''}` : ''}</span>
+            <span class="pf-src">${est.src}</span>`
+          : `<p class="pf-empty">Passe un examen blanc, ou entraîne-toi sur au moins 3 épreuves, pour estimer ton score sur 600.</p><a class="btn primary" href="#exam">Passer un mini-examen</a>`}
+        </section>
+        <section class="pf-tiles">
+          ${P.hideGame ? '' : `<div><span class="pf-ti">${TM.icon('flame')}</span><b>${R.currentStreak()} j</b><span class="muted">série</span></div>`}
+          ${P.hideGame ? '' : `<div><span class="pf-ti">${TM.coin('sm')}</span><b>${P.coins}</b><span class="muted">pièces</span></div>`}
+          <div><span class="pf-ti">${TM.icon('check')}</span><b>${P.totalAnswered}</b><span class="muted">réponses</span></div>
+          ${P.hideGame ? `<div><span class="pf-ti">${TM.icon('target')}</span><b>${pctOf(P.totalCorrect, P.totalAnswered)} %</b><span class="muted">réussite</span></div>` : ''}
+        </section>
+        <section class="pf-card">
+          <div class="pf-h"><b>Par épreuve</b><span class="muted">sur 100</span></div>
+          ${F.subtests.map((t) => {
+            const s = st[t.id]; const sc = s.n ? pctOf(s.c, s.n) : null; const isWeak = weak.id === t.id && weak.pct !== null;
+            return `<a class="pf-sub ${isWeak ? 'weak' : ''}" href="#train/${t.id}" style="--c:var(--c-${t.id})" title="${t.name} : ${s.n ? sc + '/100 sur ' + s.n + ' questions' : 'pas encore commencé'}">
+              <span>${t.short}${isWeak ? ' !' : ''}</span><span class="pf-b"><i style="width:${sc === null ? 0 : sc}%"></i></span><em>${sc === null ? '—' : sc}</em></a>`;
+          }).join('')}
+        </section>
+        <section class="pf-card">
+          <div class="pf-h"><b>Cette semaine</b><span class="muted">${played} jour${played > 1 ? 's' : ''} sur 7</span></div>
+          <div class="pf-week">${week.map((d) => `<span class="${d.on ? 'on' : ''} ${d.today ? 'today' : ''}" title="${d.full}${d.on ? ' : joué' : ''}">${d.l}</span>`).join('')}</div>
+        </section>
+        <section class="pf-card">
+          <div class="pf-h"><b>Mon score</b><span class="muted">examens blancs</span></div>
           ${examPts.length ? lineChart(examPts, { ref: P.target, refLabel: `objectif ${P.target}` }) : `<div class="empty">${TM.icon('exam')}<p>Passe un examen blanc pour voir ta courbe de score.</p><a class="btn" href="#exam">Passer un examen</a></div>`}
-        </div>
-        <div class="chart-card">
-          <div class="chart-h"><b>Questions par jour</b><span class="muted">14 derniers jours</span></div>
-          ${barChart(actBars, { goal: R.DAILY_GOAL })}
-        </div>
-        <div class="chart-card">
-          <div class="chart-h"><b>Réussite par sous-test</b><span class="muted">toutes sessions</span></div>
-          <div class="breakdown">${F.subtests.map((t) => {
-            const s = st[t.id]; const p = pctOf(s.c, s.n);
-            return `<div class="brow" title="${t.name} : ${s.n ? p + ' % sur ' + s.n + ' questions' : 'pas encore commencé'}"><span>${t.short}</span><div class="bar"><span style="width:${p}%" class="${!s.n ? '' : p < 50 ? 'low' : p < 75 ? 'mid' : ''}"></span></div><span class="bval">${s.n ? p + ' %' : '—'}</span></div>`;
-          }).join('')}</div>
-        </div>
-      </div>
+        </section>
+        <section class="pf-card">
+          <div class="pf-h"><b>Badges</b><button type="button" class="pf-link" id="pf-badges">${owned} / ${R.BADGES.length} · Tout voir</button></div>
+          <div class="pf-badges" id="pf-badge-row">${badgeList.map((b) => `<span class="pf-badge ${P.badges[b.id] ? 'got' : ''}" title="${esc(b.name)} : ${esc(b.desc)}">${TM.icon(P.badges[b.id] ? b.icon : 'lock')}</span>`).join('')}</div>
+          <div class="badges pf-allbadges" id="pf-badge-all" hidden>${badgeList.map((b) => `<div class="badge ${P.badges[b.id] ? 'got' : ''}" title="${b.desc}"><span class="badge-ico">${TM.icon(P.badges[b.id] ? b.icon : 'lock')}</span><span class="badge-n">${b.name}</span><span class="badge-d">${b.desc}</span></div>`).join('')}</div>
+        </section>
+      </div>`;
+    const bt = document.getElementById('pf-badges');
+    bt.onclick = () => { const all = document.getElementById('pf-badge-all'); const open = all.hidden; all.hidden = !open; document.getElementById('pf-badge-row').hidden = open; bt.textContent = open ? 'Réduire' : `${owned} / ${R.BADGES.length} · Tout voir`; };
+  }
 
-      <h2>Badges <span class="muted">${owned}/${R.BADGES.length}</span></h2>
-      <div class="badges">${R.BADGES.map((b) => `<div class="badge ${P.badges[b.id] ? 'got' : ''}" title="${b.desc}"><span class="badge-ico">${TM.icon(P.badges[b.id] ? b.icon : 'lock')}</span><span class="badge-n">${b.name}</span><span class="badge-d">${b.desc}</span></div>`).join('')}</div>
-
-      <section id="settings" class="settings">
-        <h2>Réglages</h2>
-        <label class="field"><span>Prénom ou pseudo</span><input id="s-name" maxlength="20" value="${esc(P.name)}"></label>
-        <label class="field"><span>Date de l’examen</span><input type="date" id="s-date" value="${P.examDate || ''}"></label>
-        <label class="field"><span>Score visé : <b id="s-tv">${P.target}</b> / 600</span><input type="range" id="s-target" min="150" max="600" step="10" value="${P.target}"></label>
-        <div class="field"><span>Objectif quotidien</span><div class="seg" id="s-goal">${[10, 20, 40].map((v) => `<button data-v="${v}" class="${P.dailyGoal === v ? 'on' : ''}">${v} questions</button>`).join('')}</div></div>
-        <div class="field"><span>Apparence</span><div class="seg" id="s-mode">${[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([v, l]) => `<button data-v="${v}" class="${P.mode === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
-        <label class="opt left"><input type="checkbox" id="s-sound" ${P.sound ? 'checked' : ''}> Sons</label>
-        <label class="opt left"><input type="checkbox" id="s-hide" ${P.hideGame ? 'checked' : ''}> Masquer la série et les pièces (mode concentration)</label>
-        <div class="row"><a class="btn ghost" href="#history">Historique des sessions</a><button class="btn ghost" id="reset">Réinitialiser ma progression</button></div>
-        ${TM.accounts ? TM.accounts.settingsHTML() : ''}
-        ${TM.admin ? TM.admin.settingsHTML() : ''}
-        <p class="muted app-version">MyPrépaTM version ${esc(window.TM_VERSION || '?')} (bêta) · <a href="#" id="s-news">Nouveautés</a> · <a href="#" id="s-tour">Visite guidée</a></p>
-      </section>`;
-    if (TM.accounts) TM.accounts.bindSettings();
-    if (TM.admin) TM.admin.bind(() => profileView('settings'));
-    const news = document.getElementById('s-news'); if (news && TM.update) news.onclick = (e) => { e.preventDefault(); TM.update.showNotes(true); };
-    const tourL = document.getElementById('s-tour'); if (tourL && TM.tour) tourL.onclick = (e) => { e.preventDefault(); TM.tour.replay(); };
-    const $ = (id) => document.getElementById(id);
+  // ---------- Réglages : 5 rubriques, chacune sur sa page (#profile/settings-<rubrique>) ----------
+  function settingsView(sub) {
+    const P = R.profile; const $ = (id) => document.getElementById(id);
+    const acc = TM.accounts && TM.accounts.current();
+    const isAdmin = TM.admin && TM.admin.isAdmin();
+    const dLong = (d) => new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    const modeLabel = { auto: 'Automatique', light: 'Clair', dark: 'Sombre' }[P.mode] || 'Clair';
+    const back = (href, label) => `<a class="set-back" href="${href}">${TM.icon('arrow')} ${label}</a>`;
+    const toggle = (id, on, label, note = '') => `<label class="set-tg"><span><b>${label}</b>${note ? `<small>${note}</small>` : ''}</span><input type="checkbox" id="${id}" role="switch" ${on ? 'checked' : ''}><i aria-hidden="true"></i></label>`;
+    const row = (key, icon, cls, title, desc) => `<a class="set-row" href="#profile/settings-${key}"><span class="set-ic ${cls}">${TM.icon(icon)}</span><span class="set-l"><b>${title}</b><small>${desc}</small></span>${TM.icon('chevron')}</a>`;
+    const pages = {
+      '': () => `${back('#profile', 'Profil')}<h1>Réglages</h1>
+        ${acc ? `<a class="set-me" href="#profile/settings-compte"><span class="set-ava">${R.mascotSVG({ size: 46 })}</span><span class="set-l"><b>${esc(acc.username)}</b><small>Mon compte · pseudo, déconnexion</small></span>${TM.icon('chevron')}</a>` : ''}
+        <div class="set-list">
+          ${row('prep', 'target', 'i-prep', 'Ma préparation', `${P.examDate ? `Examen le ${dLong(P.examDate)} · ` : ''}${P.target} / 600 · ${P.dailyGoal} questions par jour`)}
+          ${row('aff', 'sun', 'i-aff', 'Affichage et sons', `${modeLabel} · sons ${P.sound ? 'activés' : 'coupés'}${P.hideGame ? ' · concentration' : ''}`)}
+          ${row('prog', 'chart', 'i-prog', 'Ma progression', 'Historique, réinitialiser')}
+          ${row('aide', 'book', 'i-aide', 'Aide et informations', 'Nouveautés, visite guidée, confidentialité')}
+          ${isAdmin ? row('admin', 'lock', 'i-admin', 'Administration', 'Visible seulement pour toi') : ''}
+        </div>
+        <p class="muted app-version">MyPrépaTM version ${esc(window.TM_VERSION || '?')} (bêta)</p>`,
+      compte: () => `${back('#profile/settings', 'Réglages')}<h1>Mon compte</h1>
+        <label class="set-f"><span>Prénom ou pseudo affiché</span><input id="s-name" maxlength="20" value="${esc(P.name)}" autocomplete="nickname"></label>
+        ${acc ? `<div class="set-f"><span>Connexion</span><p class="set-p">Connecté en tant que <b>${esc(acc.username)}</b>. Ton compte et ta progression restent sur cet appareil.</p>
+          <button class="btn ghost set-wide" id="acc-logout" type="button">Se déconnecter</button></div>
+          <div class="set-zone"><button class="btn danger set-wide" id="s-delete" type="button">Supprimer mon compte et mes données</button><small>Efface ce compte et toute sa progression. C’est définitif.</small></div>` : ''}`,
+      prep: () => `${back('#profile/settings', 'Réglages')}<h1>Ma préparation</h1>
+        <label class="set-f"><span>Date de l’examen</span><input type="date" id="s-date" value="${P.examDate || ''}"></label>
+        <label class="set-f"><span>Score visé : <b id="s-tv">${P.target}</b> / 600</span><input type="range" id="s-target" min="150" max="600" step="10" value="${P.target}"></label>
+        <div class="set-f"><span>Objectif du jour</span><div class="seg set-seg" id="s-goal">${[10, 20, 40].map((v) => `<button type="button" data-v="${v}" class="${P.dailyGoal === v ? 'on' : ''}">${v} questions</button>`).join('')}</div></div>
+        <p class="set-note">Ces réglages servent à te proposer la bonne mission chaque jour et à afficher le compte à rebours.</p>`,
+      aff: () => `${back('#profile/settings', 'Réglages')}<h1>Affichage et sons</h1>
+        <div class="set-f"><span>Apparence</span><div class="seg set-seg" id="s-mode">${[['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].map(([v, l]) => `<button type="button" data-v="${v}" class="${P.mode === v ? 'on' : ''}">${l}</button>`).join('')}</div><small class="set-small">« Auto » suit le réglage de ton téléphone.</small></div>
+        <div class="set-f">${toggle('s-sound', P.sound, 'Sons')}</div>
+        <div class="set-f">${toggle('s-hide', P.hideGame, 'Mode concentration', 'Masque la série et les pièces')}</div>`,
+      prog: () => `${back('#profile/settings', 'Réglages')}<h1>Ma progression</h1>
+        <div class="set-list"><a class="set-row" href="#history"><span class="set-ic i-prog">${TM.icon('history')}</span><span class="set-l"><b>Historique des sessions</b><small>Tous tes entraînements et examens</small></span>${TM.icon('chevron')}</a></div>
+        <p class="set-sec">Zone sensible</p>
+        <div class="set-zone"><button class="btn danger set-wide" id="reset" type="button">Réinitialiser ma progression</button><small>Efface XP, pièces, objets, badges, série, historique et questions déjà vues de ce compte. C’est définitif.</small></div>`,
+      aide: () => `${back('#profile/settings', 'Réglages')}<h1>Aide</h1>
+        <div class="set-list">
+          <a class="set-row" href="#" id="s-news"><span class="set-ic i-aide">${TM.icon('star')}</span><span class="set-l"><b>Nouveautés</b><small>Version ${esc(window.TM_VERSION || '?')}</small></span>${TM.icon('chevron')}</a>
+          <a class="set-row" href="#" id="s-tour"><span class="set-ic i-prep">${TM.icon('target')}</span><span class="set-l"><b>Revoir la visite guidée</b><small>Les zones de l’accueil, une par une</small></span>${TM.icon('chevron')}</a>
+          <a class="set-row" href="#privacy"><span class="set-ic i-gray">${TM.icon('lock')}</span><span class="set-l"><b>Confidentialité</b><small>Tes données, tes droits</small></span>${TM.icon('chevron')}</a>
+          <a class="set-row" href="#legal"><span class="set-ic i-gray">${TM.icon('book')}</span><span class="set-l"><b>Mentions légales</b><small>Éditeur, hébergeur</small></span>${TM.icon('chevron')}</a>
+        </div>`,
+      admin: () => `${back('#profile/settings', 'Réglages')}<h1>Administration</h1>${isAdmin ? TM.admin.settingsHTML() : '<p class="muted">Réservé à l’administrateur.</p>'}`,
+    };
+    const key = pages[sub] ? sub : '';
+    $app.innerHTML = `${TM.social ? TM.social.tabs('me') : ''}<div class="set-page ${key ? 'set-in' : ''}">${pages[key]()}</div>`;
+    // Branchements (seuls les éléments présents sur la page affichée sont reliés)
     const saveField = (k, v) => { R.setProfile({ [k]: v }); };
-    $('s-name').onchange = (e) => saveField('name', e.target.value.trim());
-    $('s-date').onchange = (e) => saveField('examDate', e.target.value || null);
-    $('s-target').oninput = (e) => { $('s-tv').textContent = e.target.value; };
-    $('s-target').onchange = (e) => saveField('target', +e.target.value);
-    $('s-goal').onclick = (e) => { const b = e.target.closest('button'); if (b) { saveField('dailyGoal', +b.dataset.v); profileView('settings'); } };
-    $('s-mode').onclick = (e) => { const b = e.target.closest('button'); if (b) { R.setMode(b.dataset.v); profileView('settings'); } };
-    $('s-sound').onchange = (e) => { saveField('sound', e.target.checked); R.sound('ok'); };
-    $('s-hide').onchange = (e) => { saveField('hideGame', e.target.checked); profileView('settings'); };
-    $('reset').onclick = () => { if (confirm('Effacer XP, pièces, objets, badges, série, historique et questions déjà vues ? C’est définitif.')) { clearLocalData(); go(''); } };
-    if (arg === 'settings') requestAnimationFrame(() => { const el = $('settings'); if (el) el.scrollIntoView({ block: 'start' }); });
+    const on = (id, ev, fn) => { const el = $(id); if (el) el[ev] = fn; };
+    on('s-name', 'onchange', (e) => saveField('name', e.target.value.trim()));
+    on('s-date', 'onchange', (e) => saveField('examDate', e.target.value || null));
+    on('s-target', 'oninput', (e) => { $('s-tv').textContent = e.target.value; });
+    on('s-target', 'onchange', (e) => saveField('target', +e.target.value));
+    on('s-goal', 'onclick', (e) => { const b = e.target.closest('button'); if (b) { saveField('dailyGoal', +b.dataset.v); settingsView('prep'); } });
+    on('s-mode', 'onclick', (e) => { const b = e.target.closest('button'); if (b) { R.setMode(b.dataset.v); settingsView('aff'); } });
+    on('s-sound', 'onchange', (e) => { saveField('sound', e.target.checked); R.sound('ok'); });
+    on('s-hide', 'onchange', (e) => saveField('hideGame', e.target.checked));
+    on('reset', 'onclick', () => { if (confirm('Effacer XP, pièces, objets, badges, série, historique et questions déjà vues ? C’est définitif.')) { clearLocalData(); go(''); } });
+    on('s-delete', 'onclick', () => { if (confirm(`Supprimer ton compte « ${acc ? acc.username : ''} » et toute sa progression ? C’est définitif.`)) deleteMyAccount(); });
+    on('s-news', 'onclick', (e) => { e.preventDefault(); if (TM.update) TM.update.showNotes(true); });
+    on('s-tour', 'onclick', (e) => { e.preventDefault(); if (TM.tour) TM.tour.replay(); });
+    if (key === 'compte' && TM.accounts) TM.accounts.bindSettings();
+    // Admin : outils sur sa page ; l'entrée cachée (5 touches sur la version) reste sur la page principale
+    if (TM.admin && (key === 'admin' || key === '')) TM.admin.bind(() => settingsView(key));
   }
 
   // ---------- Boutique ----------

@@ -113,6 +113,34 @@
         { prompt: 'Le mot « radicaux » (3e paragraphe) signifie ici :', choices: ['extrêmes, qui vont à la racine du problème', 'politiques', 'chimiques', 'inefficaces', 'progressifs'], answer: 0, explanation: 'Des remèdes radicaux sont des solutions extrêmes.' },
       ],
     },
+    {
+      title: 'Le vélo en ville',
+      body: `<p>En une décennie, le vélo a reconquis une place que l’on croyait perdue dans de nombreuses villes européennes. Pistes cyclables, aides à l’achat, vélos en libre-service : les politiques publiques n’y sont pas étrangères. Mais le mouvement doit aussi beaucoup à un objet, le vélo à assistance électrique, qui a rendu accessibles des trajets jugés autrefois trop longs ou trop pentus.</p>
+<p>Les partisans du vélo mettent en avant ses bénéfices pour la santé, la qualité de l’air et la fluidité du trafic. Ces avantages sont réels, mais leur ampleur dépend des trajets remplacés. Un trajet en voiture transformé en trajet à vélo réduit nettement la pollution ; un trajet que l’on faisait déjà à pied ou en transports en commun, beaucoup moins.</p>
+<p>La sécurité reste le principal frein. Nombre d’habitants déclarent qu’ils pédaleraient volontiers s’ils se sentaient protégés de la circulation automobile. Les villes qui ont le plus progressé ne sont donc pas celles qui ont multiplié les bandes peintes sur la chaussée, mais celles qui ont construit des voies séparées et continues.</p>
+<p>L’auteur conclut que le vélo ne remplacera pas tous les déplacements, mais qu’il peut devenir le choix évident pour les trajets courts, à condition que l’aménagement suive.</p>`,
+      questions: [
+        { prompt: 'Selon le texte, quel objet a beaucoup contribué au retour du vélo ?', choices: ['Le vélo à assistance électrique', 'Le vélo pliant', 'La trottinette', 'Le casque connecté', 'Le vélo de course'], answer: 0, explanation: 'Premier paragraphe : il a rendu possibles des trajets « trop longs ou trop pentus ».' },
+        { prompt: 'De quoi dépend l’ampleur des bénéfices du vélo, d’après l’auteur ?', choices: ['Des trajets que le vélo remplace', 'Du prix des vélos', 'Du nombre de pistes cyclables', 'De la météo', 'De l’âge des cyclistes'], answer: 0, explanation: 'Deuxième paragraphe : remplacer la voiture n’a pas le même effet que remplacer la marche.' },
+        { prompt: 'Quel est le principal frein à l’usage du vélo selon le texte ?', choices: ['Le sentiment d’insécurité face aux voitures', 'Le prix des vélos', 'Le manque de parkings', 'La pollution', 'Le relief des villes'], answer: 0, explanation: 'Troisième paragraphe : « La sécurité reste le principal frein. »' },
+        { prompt: 'Quelles villes ont le plus progressé, d’après l’auteur ?', choices: ['Celles qui ont construit des voies séparées et continues', 'Celles qui ont multiplié les bandes peintes', 'Celles qui ont interdit les voitures', 'Les plus petites', 'Les plus riches'], answer: 0, explanation: 'Troisième paragraphe. Piège : les bandes peintes sont citées comme moins efficaces.' },
+        { prompt: 'Quelle est la conclusion de l’auteur ?', choices: ['Le vélo peut devenir le choix évident pour les trajets courts, si l’aménagement suit.', 'Le vélo remplacera tous les déplacements.', 'Le vélo est une mode passagère.', 'Le vélo est dangereux en ville.', 'Les aides à l’achat sont inutiles.'], answer: 0, explanation: 'Dernier paragraphe : il écarte explicitement l’idée d’un remplacement de tous les déplacements.' },
+      ],
+    },
+    {
+      title: 'Les avis en ligne',
+      body: `<p>Avant de réserver un hôtel ou d’acheter un appareil, la plupart des consommateurs consultent les avis laissés par d’autres clients. Ces notes ont pris une telle importance qu’une seule étoile de plus peut, selon plusieurs études, faire nettement augmenter le chiffre d’affaires d’un restaurant.</p>
+<p>Ce pouvoir a un revers. Puisque les avis comptent, certains cherchent à les manipuler : faux commentaires élogieux, avis négatifs déposés par des concurrents, ou clients récompensés en échange d’une bonne note. Les plateformes affirment lutter contre ces pratiques, mais l’ampleur réelle de la fraude reste difficile à mesurer.</p>
+<p>Même sincères, les avis ne sont pas toujours représentatifs. Les clients très satisfaits et les clients très mécontents écrivent davantage que les autres ; la masse des expériences « correctes » reste silencieuse. La note moyenne reflète donc autant l’envie de s’exprimer que la qualité réelle du service.</p>
+<p>L’auteur ne conseille pas d’ignorer les avis, mais de les lire autrement : privilégier les commentaires détaillés et récents, et se méfier des notes parfaites accompagnées de textes vagues.</p>`,
+      questions: [
+        { prompt: 'Quel exemple montre l’importance des avis, selon le texte ?', choices: ['Une étoile de plus peut faire augmenter le chiffre d’affaires d’un restaurant.', 'Les hôtels sans avis ferment.', 'Les avis remplacent la publicité.', 'Les clients n’achètent plus sans avis.', 'Les avis sont obligatoires.'], answer: 0, explanation: 'Premier paragraphe.' },
+        { prompt: 'Lequel de ces procédés n’est PAS cité comme une manipulation des avis ?', choices: ['Supprimer les avis de plus d’un an', 'Publier de faux commentaires élogieux', 'Déposer des avis négatifs chez un concurrent', 'Récompenser un client pour une bonne note', 'Aucun, tous sont cités'], answer: 0, explanation: 'Deuxième paragraphe : la suppression d’anciens avis n’est pas mentionnée.' },
+        { prompt: 'Pourquoi les avis sincères ne sont-ils pas toujours représentatifs ?', choices: ['Les clients très satisfaits ou très mécontents écrivent davantage.', 'Les plateformes les modifient.', 'Ils sont trop nombreux.', 'Ils sont écrits trop tard.', 'Ils sont tous faux.'], answer: 0, explanation: 'Troisième paragraphe : les expériences « correctes » restent silencieuses.' },
+        { prompt: 'Que reflète la note moyenne, d’après l’auteur ?', choices: ['Autant l’envie de s’exprimer que la qualité réelle du service', 'Uniquement la qualité du service', 'Uniquement le prix', 'La popularité de la plateforme', 'Le nombre de fraudes'], answer: 0, explanation: 'Fin du troisième paragraphe.' },
+        { prompt: 'Quel conseil l’auteur donne-t-il au lecteur ?', choices: ['Privilégier les avis détaillés et récents, et se méfier des notes parfaites aux textes vagues', 'Ignorer tous les avis', 'Ne lire que les avis négatifs', 'Se fier à la note moyenne', 'Écrire un avis après chaque achat'], answer: 0, explanation: 'Dernier paragraphe. Piège : il ne conseille pas d’ignorer les avis.' },
+      ],
+    },
   ];
 
   function questionsFor(text) {

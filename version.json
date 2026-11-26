@@ -1,7 +1,18 @@
 {
- "version": "0.1.5",
- "date": "2026-11-24",
+ "version": "0.2.0",
+ "date": "2026-11-26",
  "history": [
+  {
+   "version": "0.2.0",
+   "date": "2026-11-26",
+   "notes": [
+    "Score sur 600 au barème officiel, sans points négatifs, détaillé par épreuve",
+    "Corrections courtes et visuelles, avec la méthode à déplier",
+    "Nouveau profil et réglages rangés en rubriques",
+    "Plus de questions et deux nouveaux textes dans toutes les épreuves",
+    "Questions revues : âges réalistes, notes possibles, suites corrigées"
+   ]
+  },
   {
    "version": "0.1.5",
    "date": "2026-11-24",

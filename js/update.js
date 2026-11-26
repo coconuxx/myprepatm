@@ -28,9 +28,15 @@
     let seen = null;
     try { seen = localStorage.getItem(SEEN); localStorage.setItem(SEEN, CUR); } catch (e) {}
     if (!force && (seen === CUR || seen === null)) return; // déjà vues, ou toute première ouverture
+    // Toutes les versions publiées depuis la dernière vue (pas seulement la dernière), au plus 5
+    const num = (s) => String(s || '0').split('.').map((x) => +x || 0);
+    const cmp = (a, b) => { const x = num(a), y = num(b); for (let k = 0; k < 3; k++) if (x[k] !== y[k]) return x[k] - y[k]; return 0; };
     const go = (v) => {
-      const h = (v && v.history || []).find((x) => x.version === CUR);
-      if (!h || !h.notes || !h.notes.length || document.querySelector('.upd-bg')) return;
+      const all = (v && v.history || []).filter((x) => x.notes && x.notes.length);
+      const missed = force || !seen ? all.filter((x) => x.version === CUR)
+        : all.filter((x) => cmp(x.version, seen) > 0 && cmp(x.version, CUR) <= 0).slice(0, 5);
+      const h = missed[0] && { date: (missed.find((x) => x.version === CUR) || missed[0]).date, notes: [...new Set([].concat(...missed.map((x) => x.notes)))] }; // sans doublons
+      if (!h || !h.notes.length || document.querySelector('.upd-bg')) return;
       const bg = document.createElement('div');
       bg.className = 'upd-bg';
       bg.innerHTML = `<div class="upd-card" role="dialog" aria-modal="true" aria-labelledby="upd-t">

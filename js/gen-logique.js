@@ -12,6 +12,8 @@
       correct: next,
       distractors: [next + 1, next - 1, next + 2, ...extra],
       explanation: rule,
+      tip: rule.split(/(?<=\.)\s/)[0],
+      fig: { type: 'seq', terms: seq, next },
     });
   }
 
@@ -19,7 +21,7 @@
     () => { // arithmétique
       const a = rand(2, 40), r = pick([3, 4, 6, 7, 9, 11, 13, -4, -6]);
       const s = Array.from({ length: 5 }, (_, i) => a + i * r + (r < 0 ? 60 : 0));
-      return series(s, s[4] + r, `Suite arithmétique : on ajoute ${r} à chaque terme.`, [s[4] + 2 * r]);
+      return series(s, s[4] + r, `Suite arithmétique : on ${r > 0 ? `ajoute ${r}` : `retire ${-r}`} à chaque terme.`, [s[4] + 2 * r]);
     },
     () => { // géométrique
       const a = rand(1, 5), q = pick([2, 3]);
@@ -49,13 +51,13 @@
       return series(s, s[4] + s[5], `Chaque terme est la somme des deux précédents : ${s[4]} + ${s[5]} = ${s[4] + s[5]}.`, [s[5] + (s[5] - s[4]), s[5] * 2]);
     },
     () => { // ×a + b
-      const a = 2, b = pick([1, -1, 2, 3]), st = rand(1, 4);
+      const a = 2, b = pick([1, -1, 2, 3]), st = b < 0 ? rand(2, 4) : rand(1, 4); // avec −1, partir de 1 donnerait 1, 1, 1…
       const s = [st]; while (s.length < 5) s.push(s[s.length - 1] * a + b);
       const n = s[4] * a + b;
       return series(s, n, `Règle : ×${a} puis ${b > 0 ? '+' : '−'}${Math.abs(b)}. ${s[4]} × ${a} ${b > 0 ? '+' : '−'} ${Math.abs(b)} = ${n}.`, [s[4] * a, n + 2 * b]);
     },
     () => { // lettres pas constant
-      const st = rand(0, 10), k = pick([2, 3, 4, 5]);
+      const k = pick([2, 3, 4, 5]), st = rand(0, 25 - 5 * k); // reste dans l'alphabet, sans repartir à A
       const s = Array.from({ length: 5 }, (_, i) => L(st + i * k));
       const n = L(st + 5 * k);
       return build({
@@ -89,7 +91,7 @@
         prompt: `Dans un code, <strong>${w1}</strong> s’écrit <strong>${enc(w1, k)}</strong>. Comment s’écrit <strong>${w2}</strong> ?`,
         correct: enc(w2, k),
         distractors: [enc(w2, -k), enc(w2, k + 1), enc(w2, k).split('').reverse().join(''), enc(w2, k === 1 ? 2 : k - 1), enc(w2, k + 2), enc(w2, -k - 1), enc(w2, k + 3)],
-        explanation: `Chaque lettre est décalée de ${k > 0 ? '+' : ''}${k} dans l’alphabet : ${w2} → ${enc(w2, k)}.`,
+        explanation: `Chaque lettre est décalée de ${k > 0 ? '+' : ''}${k} dans l’alphabet (après Z, on repart à A) : ${w2} → ${enc(w2, k)}.`,
       });
     },
     () => { // fonction cachée
@@ -164,6 +166,73 @@
         distractors: [2 * a + b, a + b, a * b, a + 2 * b + 1],
         explanation: `Règle : premier + 2 × deuxième. ${a} + 2 × ${b} = ${a + 2 * b}.`,
       });
+    },
+    // --- Ajouts (variété) ---
+    () => { // suite géométrique décroissante
+      const end = rand(2, 9), q = pick([2, 3]);
+      const s = Array.from({ length: 5 }, (_, i) => end * q ** (5 - i));
+      return series(s, end, `Chaque terme est divisé par ${q} : ${s[4]} ÷ ${q} = ${end}.`, [s[4] - end, end * 2 === s[4] ? end + 1 : end * 2]);
+    },
+    () => { // cubes
+      const st = rand(1, 3);
+      const s = Array.from({ length: 5 }, (_, i) => (st + i) ** 3);
+      const n = (st + 5) ** 3;
+      return series(s, n, `Ce sont les cubes : ${st}³, ${st + 1}³, … donc ${st + 5}³ = ${n}.`, [(st + 5) ** 2, n - (st + 5), s[4] * 2]);
+    },
+    () => { // paires de lettres en miroir
+      const st = rand(0, 7);
+      const item = (i) => L(st + i) + L(25 - st - i);
+      const s = Array.from({ length: 4 }, (_, i) => item(i));
+      const n = item(4);
+      return build({
+        theme: T, format: (x) => x,
+        prompt: `Quel élément complète la suite ?<div class="series">${s.join('&nbsp;&nbsp;')}&nbsp;&nbsp;<span class="blank">?</span></div>`,
+        correct: n,
+        distractors: [L(st + 4) + L(25 - st - 3), L(st + 5) + L(25 - st - 4), L(st + 4) + L(25 - st - 5), L(st + 3) + L(25 - st - 4), L(25 - st - 4) + L(st + 4)],
+        explanation: `La 1ʳᵉ lettre avance d’un rang (${s.map((x) => x[0]).join(', ')}, ${n[0]}), la 2ᵉ recule d’un rang depuis la fin de l’alphabet (${s.map((x) => x[1]).join(', ')}, ${n[1]}).`,
+      });
+    },
+    () => { // horloge
+      const h = rand(0, 23), add = rand(25, 70);
+      const res = (h + add) % 24;
+      const fmtH = (x) => `${((x % 24) + 24) % 24} h`;
+      return build({
+        theme: T, format: (x) => x,
+        prompt: `Il est ${fmtH(h)}. Quelle heure sera-t-il dans ${add} heures ?`,
+        correct: fmtH(res),
+        distractors: [fmtH(res + 1), fmtH(res - 1), fmtH((h + add) % 12), fmtH(res + 12), fmtH(res + 2)],
+        explanation: `${add} h = ${Math.floor(add / 24)} jour(s) et ${add % 24} h. ${fmtH(h)} + ${add % 24} h = ${fmtH(res)}.`,
+      });
+    },
+    () => { // calendrier
+      const J = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+      const d0 = rand(1, 9), j0 = rand(0, 6), d1 = d0 + rand(10, 20);
+      const off = d1 - d0; const res = J[(j0 + off) % 7];
+      return build({
+        theme: T, format: (x) => x,
+        prompt: `Le ${d0 === 1 ? '1er' : d0} mai tombe un ${J[j0]}. Quel jour de la semaine sera le ${d1} mai ?`,
+        correct: res,
+        distractors: J.filter((x) => x !== res),
+        explanation: `Du ${d0} au ${d1} : ${off} jours = ${Math.floor(off / 7)} semaine(s) et ${off % 7} jour(s). ${J[j0]} + ${off % 7} jour(s) = ${res}.`,
+      });
+    },
+    () => { // carré magique simple : somme constante par ligne
+      const S = rand(15, 30);
+      const rows = Array.from({ length: 3 }, () => { const a = rand(2, 9), b = rand(2, 9); return [a, b, S - a - b]; });
+      const a = rand(2, 9), b = rand(2, 9);
+      return build({
+        theme: T,
+        prompt: `Dans chaque ligne, les trois nombres obéissent à la même règle.<div class="series">${rows.map((r) => r.join(' · ')).join('<br>')}<br>${a} · ${b} · <span class="blank">?</span></div>`,
+        correct: S - a - b,
+        distractors: [a + b, S - a, S - b, S - a - b + 1],
+        explanation: `Chaque ligne a la même somme : ${S}. ${S} − ${a} − ${b} = ${S - a - b}.`,
+      });
+    },
+    () => { // suite où l’écart double
+      const a = rand(1, 10), d = rand(1, 3);
+      const s = [a]; let diff = d;
+      for (let i = 1; i < 5; i++) { s.push(s[i - 1] + diff); diff *= 2; }
+      return series(s, s[4] + diff, `Les écarts doublent : ${s.slice(1).map((v, i) => '+' + (v - s[i])).join(', ')}, puis +${diff}. ${s[4]} + ${diff} = ${s[4] + diff}.`, [s[4] + diff / 2 * 3, s[4] * 2]);
     },
   ];
 
