@@ -315,6 +315,8 @@
     const qs = TM.errors.pick(10, theme);
     if (qs.length) startPractice('review', 'mix', qs, null);
   }
+  // Texte brut d'un énoncé : sans balises, et avec les espaces spéciaux (&nbsp;) et autres entités convertis
+  function plainText(h) { const d = document.createElement('div'); d.innerHTML = String(h || '').replace(/<[^>]+>/g, ' '); return d.textContent.replace(/\s+/g, ' ').trim(); }
   function errorsView() {
     const E = TM.errors; const n = E.count(); const by = E.byTheme();
     const items = E.items.slice(0, 25);
@@ -335,8 +337,8 @@
         </button>`).join('')}</div>
       <h2>Dernières erreurs</h2>
       <div class="review">${items.map((x, i) => {
-        const t = byId(x.q.theme);
-        return `<details class="rv ko errors-item"><summary><span class="errors-tag">${t ? t.short : ''}</span> ${esc(x.q.prompt.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90))}${x.q.prompt.length > 90 ? '…' : ''}</summary>
+        const t = byId(x.q.theme); const txt = plainText(x.q.prompt);
+        return `<details class="rv ko errors-item"><summary><span class="errors-tag">${t ? t.short : ''}</span> ${esc(txt.slice(0, 90))}${txt.length > 90 ? '…' : ''}</summary>
           <div class="prompt">${x.q.prompt}</div>
           <p><strong>Bonne réponse :</strong> ${x.q.choices[x.q.answer]}</p>
           <p class="muted">${x.q.explanation}</p>
@@ -635,7 +637,7 @@
       state.xp += gain; state.coins = (state.coins || 0) + coins;
       // Carnet d’erreurs : révision ou ajout
       if (qu.errKey) { const rv = TM.errors.reviewed(qu.errKey, good); if (rv.mastered) setTimeout(() => R.toast(TM.icon('check'), 'Erreur maîtrisée : elle quitte ton carnet'), 300); }
-      else if (!good) TM.errors.add(qu);
+      else if (!good) TM.errors.add(qu, sec.answers[state.q]);
       R.sound(good ? 'ok' : 'ko');
       quizView();
       // On fait glisser la page jusqu'à la correction, en gardant la question visible au-dessus
@@ -719,7 +721,7 @@
     const correct = all.filter(Boolean).length;
     const entry = { date: new Date().toISOString(), mode: state.mode, results, correct, total: all.length };
     if (state.mode === 'exam') {
-      state.sections.forEach((sec) => sec.questions.forEach((q, i) => { if (sec.answers[i] !== q.answer) TM.errors.add(q); }));
+      state.sections.forEach((sec) => sec.questions.forEach((q, i) => { if (sec.answers[i] !== q.answer) TM.errors.add(q, sec.answers[i]); }));
       entry.score = Object.values(results).reduce((a, r) => a + r.score, 0); // barème 2025 : +4 / 0 / 0
       entry.bareme = 'tage';
       entry.full = state.full;
@@ -863,7 +865,7 @@
       const good = S.sel === qu.answer;
       const { gain, coins } = R.answer(good, qu.theme);
       S.xp += gain; S.coins += coins;
-      if (!good) TM.errors.add(qu);
+      if (!good) TM.errors.add(qu, S.sel);
       if (good) S.points++; else S.lives--;
       R.sound(good ? 'ok' : 'ko');
       survivalView();
@@ -1308,7 +1310,7 @@
         <li><code>tm_profile</code> : prénom ou pseudo (facultatif), apparence de l’avatar (dessin, aucune photo), date d’examen et score visé, objectif quotidien, XP, niveau, pièces virtuelles, options et accessoires obtenus en boutique, badges, série de jours, réglages (apparence, son, mode concentration), suivi des missions du jour ;</li>
         <li><code>tm_history</code> : tes 200 dernières sessions (date, mode, score) ;</li>
         <li><code>tm_used_…</code> : les questions déjà vues, pour éviter de te les reposer ;</li>
-        <li><code>tm_errors</code> : ton carnet d’erreurs (les questions ratées à revoir et ta progression sur celles-ci) ;</li>
+        <li><code>tm_errors</code> : ton carnet d’erreurs (les questions ratées à revoir, la réponse que tu avais donnée, ta progression sur celles-ci et les dates où tu les as ajoutées ou maîtrisées) ;</li>
         <li><code>tm_accounts</code> : les comptes créés sur cet appareil (pseudo, empreinte salée du mot de passe — jamais le mot de passe lui-même —, dates de création et de dernière activité, compte suspendu ou non) et le compte connecté ;</li>
         <li><code>tm_acc_…</code> : la progression des comptes de cet appareil qui ne sont pas connectés, rangée en attendant leur prochaine connexion ;</li>
         <li><code>tm_social</code> : partie « amis » de ton compte (même identifiant et même pseudo), code ami, date de création, listes d’amis et de demandes (vides tant qu’il n’y a pas de serveur) ;</li>

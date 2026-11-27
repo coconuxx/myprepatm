@@ -1,7 +1,14 @@
 {
- "version": "0.2.1",
+ "version": "0.2.2",
  "date": "2026-11-27",
  "history": [
+  {
+   "version": "0.2.2",
+   "date": "2026-11-27",
+   "notes": [
+    "Carnet d’erreurs : les suites s’affichent correctement"
+   ]
+  },
   {
    "version": "0.2.1",
    "date": "2026-11-27",
