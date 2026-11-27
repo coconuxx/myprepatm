@@ -302,8 +302,7 @@
       </div>`;
 
     $app.querySelectorAll('#home-modes, #home-modes-2').forEach((b) => b.onclick = openPlay);
-    const wk = document.getElementById('home-week');
-    if (wk) wk.onclick = openChests;
+    bindWeek();
     if (!P.hideGame) { R.claimToday(); R.checkChests(); }
 
     // Bonus une fois par jour quand la mission est terminée
@@ -314,52 +313,59 @@
       R.toast(TM.icon('check'), `Mission du jour accomplie · +${MISSION_BONUS} ${TM.coin('xs')}`);
     }
   }
-  // ---------- Semaine de révision et coffres de série (validés sur maquette le 27/11/2026) ----------
+  // ---------- Semaine de révision et coffres de série (validés sur maquette le 27/11/2026, version compacte A+C) ----------
   const giftIco = (g) => (g.icon === 'coin' ? TM.coin('xs') : TM.icon(g.icon));
+  const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
   function weekCard() {
     const W = R.weekState(); const n = W.filter((d) => d.done).length;
     const cur = W.find((d) => d.today); const c = R.nextChest(); const st = R.currentStreak();
-    const sv = R.savableDays();
-    const todayLine = sv.length && sv.length <= 2 ? `<span class="hw-warn">${TM.icon('snow')} ${dayNames(sv)} raté${sv.length > 1 ? 's' : ''} : utilise ${sv.length > 1 ? `${sv.length} gels` : 'un gel'} pour garder ta série</span>`
-      : cur.done ? `Case du jour ouverte : ${cur.gift.label}` : `Aujourd’hui : ${cur.gift.label}`;
-    return `<button class="home-week pop-in" type="button" id="home-week" aria-haspopup="dialog" aria-label="Ta semaine, ${n} jour${n > 1 ? 's' : ''} sur 7. Voir les coffres de série">
-      <span class="home-week-h"><b>Ta semaine · ${n}/7</b><span>Coffres ${TM.icon('chevron')}</span></span>
-      <span class="home-week-days">${W.map((d) => `<span class="hw-d ${d.done ? 'done' : d.frozen ? 'frozen' : d.today ? 'cur' : d.past ? 'missed' : ''} ${!d.done && !d.frozen && d.gift.icon === 'gift' ? 'big' : ''}" title="${d.frozen ? 'Jour sauvé par un gel' : d.gift.label}">${d.done ? TM.icon('check') : d.frozen ? TM.icon('snow') : giftIco(d.gift)}<i>${d.letter}</i></span>`).join('')}</span>
-      <span class="home-week-l">${todayLine}${c ? ` · coffre à ${c.n} jours de série${st ? ` : encore ${Math.max(0, c.n - st)}` : ''}` : ''}</span>
-    </button>`;
+    const sv = R.savableDays(); const have = R.profile.inv.freeze; const canSave = sv.length && sv.length <= 2;
+    const prev = c ? (R.CHESTS[R.CHESTS.indexOf(c) - 1] || { n: 0 }).n : 0;
+    const pct = c ? Math.max(4, Math.min(100, Math.round(((st - prev) / (c.n - prev)) * 100))) : 100;
+    return `<section class="home-week pop-in" aria-label="Ta semaine">
+      <div class="home-week-h"><b>Ta semaine · ${n}/7</b><span class="home-week-t">${cur.done ? 'Case du jour ouverte' : `Aujourd’hui : ${cur.gift.label}`}</span></div>
+      <div class="home-week-days">${W.map((d) => `<span class="hw-d ${d.done ? 'done' : d.frozen ? 'frozen' : d.today ? 'cur' : d.past ? 'missed' : ''} ${!d.done && !d.frozen && d.gift.icon === 'gift' ? 'big' : ''}" title="${d.frozen ? 'Jour sauvé par un gel' : d.gift.label}">${d.done ? TM.icon('check') : d.frozen ? TM.icon('snow') : giftIco(d.gift)}<i>${d.letter}</i></span>`).join('')}</div>
+      <button class="hw-chest" type="button" id="home-week" aria-haspopup="dialog">
+        <span class="hw-chest-i">${R.chestSVG(c ? 'next' : 'open', 30, c ? c.n : 100)}</span>
+        <span class="hw-chest-t">${c ? `Coffre à ${c.n} jours · encore ${Math.max(0, c.n - st)}` : 'Tous les coffres sont ouverts'}</span>
+        <span class="hw-bar" aria-hidden="true"><i style="width:${pct}%"></i></span>${TM.icon('chevron')}
+      </button>
+      ${canSave ? `<div class="hw-freeze"><span class="hw-freeze-i">${TM.icon('snow')}</span><span class="hw-freeze-t">${dayNames(sv)} raté${sv.length > 1 ? 's' : ''}<small>Tu as ${plural(have, 'gel')}</small></span>
+        ${have >= sv.length ? `<button class="hw-freeze-b" type="button" id="hw-freeze">Utiliser ${sv.length > 1 ? `${sv.length} gels` : 'un gel'}</button>` : `<a class="hw-freeze-b" href="#shop/bonus">Acheter un gel</a>`}</div>` : ''}
+    </section>`;
+  }
+  function bindWeek() {
+    const wk = document.getElementById('home-week');
+    if (wk) wk.onclick = openChests;
+    const fz = document.getElementById('hw-freeze');
+    if (fz) fz.onclick = () => { if (R.useFreeze()) home(); };
   }
   const dayNames = (keys) => keys.map((k) => new Date(k + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' })).map((n, i) => (i ? n : n[0].toUpperCase() + n.slice(1))).join(' et ');
-  // Gel de série : sauver le ou les jours ratés depuis le dernier jour actif
-  function freezeBlock() {
-    const sv = R.savableDays(); const have = R.profile.inv.freeze;
-    if (!sv.length || sv.length > 2) return '';
-    const need = sv.length;
-    return `<div class="chl-freeze">
-      <span class="chl-freeze-i">${TM.icon('snow')}</span>
-      <span><b>${dayNames(sv)} raté${need > 1 ? 's' : ''}</b><small>Ta série de ${R.profile.streak} jour${R.profile.streak > 1 ? 's' : ''} s’arrête si tu ne le${need > 1 ? 's' : ''} sauves pas. Tu as ${have} gel${have > 1 ? 's' : ''}.</small></span>
-      ${have >= need ? `<button class="btn primary" type="button" id="chl-freeze">Utiliser ${need > 1 ? `${need} gels` : 'un gel'}</button>`
-        : `<a class="btn" href="#shop/bonus" id="chl-shop">Acheter un gel</a>`}
-    </div>`;
-  }
+  // Petite fenêtre : rangée de cartes qui défile (le prochain coffre en grand), détail du coffre touché
   function openChests() {
-    const st = R.currentStreak(); const got = R.profile.chests || {};
+    const st = R.currentStreak(); const got = R.profile.chests || {}; const C = R.CHESTS;
+    const next = R.nextChest(); let sel = next || C[C.length - 1];
     const bg = document.createElement('div');
     bg.className = 'modal-bg';
-    bg.innerHTML = `<div class="modal pop chest-list" role="dialog" aria-modal="true" aria-labelledby="chl-h">
+    bg.innerHTML = `<div class="modal pop chest-sheet" role="dialog" aria-modal="true" aria-labelledby="chl-h">
       <h2 id="chl-h">Coffres de série</h2>
-      ${freezeBlock()}
-      <p class="muted">Série actuelle : ${st} jour${st > 1 ? 's' : ''}. Chaque palier ouvre un coffre, une seule fois.</p>
-      <ul>${R.CHESTS.map((c) => { const done = got[c.n]; const next = !done && R.nextChest() === c;
-        return `<li class="${done ? 'done' : next ? 'next' : ''}"><span class="chl-i">${TM.icon(done ? 'check' : next ? 'gift' : 'lock')}</span><b>${c.n} j</b><span>${c.label}${next ? `<small>encore ${Math.max(0, c.n - st)} jour${c.n - st > 1 ? 's' : ''}</small>` : ''}</span></li>`; }).join('')}</ul>
-      <p class="muted chl-n">Ta semaine : chaque jour où tu atteins ton objectif ouvre sa case. Une case ratée ne remet rien à zéro.</p>
+      <p class="muted chl-st">Série : ${plural(st, 'jour')}</p>
+      <div class="chr" role="list">${C.map((c) => { const state = got[c.n] ? 'open' : c === next ? 'next' : 'lock';
+        return `<button type="button" role="listitem" class="chr-c chr-${state}" data-n="${c.n}" aria-label="Coffre à ${c.n} jours${got[c.n] ? ', ouvert' : ''}">${R.chestSVG(state, state === 'next' ? 56 : 40, c.n)}<b>${c.n} j</b>${state === 'next' ? `<small>encore ${Math.max(0, c.n - st)}</small>` : state === 'open' ? '<small>ouvert</small>' : ''}</button>`; }).join('')}</div>
+      <div class="chf-detail" id="chf-detail" aria-live="polite"></div>
       <button class="btn primary big-btn" type="button" id="chl-ok">Fermer</button></div>`;
     document.body.appendChild(bg);
+    const detail = () => {
+      const done = got[sel.n];
+      bg.querySelector('#chf-detail').innerHTML = `<b>${done ? `${sel.n} jours · ouvert` : sel === next ? `Prochain : ${sel.n} jours` : `${sel.n} jours de série`} · coffre en ${R.CHEST_LOOK[sel.n].name}</b><span>${sel.label}</span>`;
+      bg.querySelectorAll('.chr-c').forEach((b) => b.classList.toggle('sel', +b.dataset.n === sel.n));
+    };
+    detail();
+    bg.querySelectorAll('.chr-c').forEach((b) => { b.onclick = () => { sel = C.find((c) => c.n === +b.dataset.n); detail(); b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }; });
+    const row = bg.querySelector('.chr'); const cur = bg.querySelector('.chr-c.sel');
+    if (cur) row.scrollLeft = cur.offsetLeft - (row.clientWidth - cur.offsetWidth) / 2;
     const close = () => bg.remove();
     bg.querySelector('#chl-ok').onclick = close;
-    const fz = bg.querySelector('#chl-freeze');
-    if (fz) fz.onclick = () => { if (R.useFreeze()) { close(); home(); openChests(); } };
-    const sh = bg.querySelector('#chl-shop');
-    if (sh) sh.onclick = close;
     bg.onclick = (e) => { if (e.target === bg) close(); };
     bg.querySelector('#chl-ok').focus();
   }

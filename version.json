@@ -1,7 +1,16 @@
 {
- "version": "0.2.4",
+ "version": "0.2.5",
  "date": "2026-11-27",
  "history": [
+  {
+   "version": "0.2.5",
+   "date": "2026-11-27",
+   "notes": [
+    "Coffres de série redessinés : bois, argent, or, diamant et légendaire, à faire défiler",
+    "Touche le coffre pour l’ouvrir toi-même quand tu atteins un palier",
+    "Le gel de série s’utilise directement depuis la carte « Ta semaine »"
+   ]
+  },
   {
    "version": "0.2.4",
    "date": "2026-11-27",

@@ -332,8 +332,37 @@
     { n: 50, coins: 200, item: 'phoenix', label: '200 pièces et le compagnon Phénix' },
     { n: 100, coins: 300, item: 'diamond', label: '300 pièces et le Diadème de diamant' },
   ];
+  // Coffre dessiné (détaillé, une matière par palier) : state 'lock' | 'next' | 'open' | 'anim', n = palier
+  const CHEST_LOOK = {
+    7: { name: 'bois', body: '#a8622f', lid: '#bd7440', dark: '#6b3a17', band: '#8d93a1', bandS: '#5d6270', lock: '#c3c8d2' },
+    14: { name: 'argent', body: '#9ba8c2', lid: '#b3bed4', dark: '#566280', band: '#eef2f8', bandS: '#8f9ab0', lock: '#ffffff' },
+    30: { name: 'or', body: '#d85a30', lid: '#e8673f', dark: '#8e3519', band: '#ffc21a', bandS: '#b8860b', lock: '#ffd34d' },
+    50: { name: 'diamant', body: '#2a9bd2', lid: '#3fb6e8', dark: '#176a94', band: '#d4f4ff', bandS: '#7fcde8', lock: '#ffffff', gem: '#bff0ff' },
+    100: { name: 'légendaire', body: '#6a3fc6', lid: '#7b4fd6', dark: '#3c1f8c', band: '#ffc21a', bandS: '#b8860b', lock: '#ffd34d', gem: '#ff5fa2' },
+  };
+  function chestSVG(state = 'lock', size = 40, n = 30) {
+    const k = CHEST_LOOK[n] || CHEST_LOOK[30];
+    const open = state === 'open' || state === 'anim';
+    const bands = (y1, h) => `<rect x="14" y="${y1}" width="6" height="${h}" fill="${k.band}" stroke="${k.bandS}"/><rect x="44" y="${y1}" width="6" height="${h}" fill="${k.band}" stroke="${k.bandS}"/>`;
+    const lid = `<path d="M8 26v-7a12 12 0 0 1 12-12h24a12 12 0 0 1 12 12v7z" fill="${k.lid}" stroke="${k.dark}" stroke-width="2"/><path d="M10 18h44" stroke="${k.dark}" stroke-width="1.2" opacity=".45"/>${bands(7, 19)}<path d="M13 13a10 10 0 0 1 8-5" stroke="#fff" stroke-width="2" opacity=".35" fill="none" stroke-linecap="round"/>`;
+    const back = `<path d="M9 27 12 9a5 5 0 0 1 5-4h30a5 5 0 0 1 5 4l3 18z" fill="${k.lid}" stroke="${k.dark}" stroke-width="2"/><path d="M14 27 16 12h32l2 15z" fill="#4a2312"/><rect x="15" y="5" width="5" height="7" fill="${k.band}" stroke="${k.bandS}"/><rect x="44" y="5" width="5" height="7" fill="${k.band}" stroke="${k.bandS}"/>`;
+    const coins = `<g class="chs-in"><circle cx="24" cy="25" r="4.5" fill="#ffd34d" stroke="#b8860b"/><circle cx="33" cy="22.5" r="4.5" fill="#ffd34d" stroke="#b8860b"/><circle cx="41" cy="25.5" r="4.5" fill="#ffd34d" stroke="#b8860b"/>${k.gem ? `<path d="M32 13l4 4.5-4 5-4-5z" fill="${k.gem}" stroke="#fff"/>` : ''}</g>`;
+    const lock = k.gem ? `<path d="M32 21l6 6.5-6 8-6-8z" fill="${k.gem}" stroke="${k.bandS}" stroke-width="1.5"/>`
+      : `<rect x="26" y="21" width="12" height="14" rx="3" fill="${k.lock}" stroke="${k.bandS}" stroke-width="1.5"/><path d="M32 26v4" stroke="${k.dark}" stroke-width="2" stroke-linecap="round"/>`;
+    const rays = state === 'next' || state === 'anim' ? `<g class="chs-rays" fill="#ffc21a"><path d="M32 0l2 5.5h-4z"/><path d="M10 6l5 3.5-3 2z"/><path d="M54 6l-5 3.5 3 2z"/></g>` : '';
+    return `<svg class="chs chs-${state}" viewBox="0 0 64 56" width="${size}" height="${Math.round(size * 0.875)}" aria-hidden="true">${rays}
+      ${open ? back + coins : ''}
+      <rect x="8" y="26" width="48" height="26" rx="5" fill="${k.body}" stroke="${k.dark}" stroke-width="2"/>
+      <path d="M8 35h48M8 44h48" stroke="${k.dark}" stroke-width="1.2" opacity=".45"/>
+      <rect x="9" y="27" width="46" height="4" fill="${k.dark}" opacity=".35"/>
+      ${bands(26, 26)}
+      <circle cx="17" cy="31" r="1.3" fill="${k.bandS}"/><circle cx="17" cy="47" r="1.3" fill="${k.bandS}"/><circle cx="47" cy="31" r="1.3" fill="${k.bandS}"/><circle cx="47" cy="47" r="1.3" fill="${k.bandS}"/>
+      ${open ? '' : lid + lock}</svg>`;
+  }
   const nextChest = () => CHESTS.find((c) => !(P.chests || {})[c.n]) || null;
-  function openChest(c) {
+  // Le coffre apparaît fermé : on le touche pour l'ouvrir. Le contenu n'est donné qu'à ce moment-là
+  // (si on ferme l'appli avant, le coffre revient à la prochaine ouverture).
+  function grantChest(c) {
     P.chests = Object.assign({}, P.chests, { [c.n]: today() });
     let extra = 0; // un bonus déjà au maximum devient des pièces
     Object.entries(c.inv || {}).forEach(([k, v]) => {
@@ -341,21 +370,43 @@
       const add = Math.min(v, Math.max(0, max - P.inv[k])); P.inv[k] += add; extra += (v - add) * 20;
     });
     if (c.item && !P.owned.includes(c.item)) { P.owned.push(c.item); P.ownedAt[c.item] = today(); }
-    save(); addCoins(c.coins + extra); sound('level'); confetti(140);
+    save(); addCoins(c.coins + extra);
+  }
+  let chestOpen = false;
+  function openChest(c) {
+    if (chestOpen) return;
+    chestOpen = true;
     const it = c.item && ITEMS.find((x) => x.id === c.item);
     const modal = document.createElement('div');
     modal.className = 'modal-bg';
-    modal.innerHTML = `<div class="modal pop chest-modal">
-      <div class="chest-ico">${it ? mascotSVG({ mood: 'happy', size: 130, celebrate: true, equip: Object.assign({}, P.equip, { [it.slot]: it.id }) }) : I('gift')}</div>
-      <div class="muted">Série de ${c.n} jours</div>
-      <h2>Coffre ouvert</h2>
-      <p>${c.label}</p>
-      ${it ? `<button class="btn big-btn" id="chwear">Porter : ${it.name}</button>` : ''}
-      <button class="btn primary big-btn" id="chok">Continuer</button></div>`;
+    modal.innerHTML = `<div class="modal pop chest-modal" role="dialog" aria-modal="true" aria-labelledby="ch-h">
+      <div class="muted">Série de ${c.n} jours · coffre en ${CHEST_LOOK[c.n].name}</div>
+      <h2 id="ch-h">Un coffre t’attend</h2>
+      <button class="chest-tap" type="button" id="chtap" aria-label="Ouvrir le coffre">${chestSVG('next', 130, c.n)}</button>
+      <p class="chest-hint">Touche le coffre pour l’ouvrir</p>
+      <div class="chest-after" hidden>
+        <p>${c.label}</p>
+        ${it ? `<button class="btn big-btn" id="chwear">Porter : ${it.name}</button>` : ''}
+        <button class="btn primary big-btn" id="chok">Continuer</button>
+      </div></div>`;
     document.body.appendChild(modal);
-    modal.querySelector('#chok').onclick = () => modal.remove();
-    const w = modal.querySelector('#chwear');
-    if (w) w.onclick = () => { P.equip[it.slot] = it.id; save(); renderHud(); modal.remove(); if (location.hash === '' || location.hash === '#') window.dispatchEvent(new HashChangeEvent('hashchange')); };
+    const tap = modal.querySelector('#chtap');
+    tap.focus();
+    tap.onclick = () => {
+      if (tap.disabled) return;
+      tap.disabled = true;
+      grantChest(c); sound('level'); confetti(140);
+      tap.innerHTML = chestSVG('anim', 130, c.n); tap.classList.add('chest-pop');
+      modal.querySelector('#ch-h').textContent = 'Coffre ouvert';
+      modal.querySelector('.chest-hint').remove();
+      modal.querySelector('.chest-after').hidden = false;
+      modal.querySelector('#chok').focus();
+    };
+    const done = () => { modal.remove(); chestOpen = false; if (!location.hash || location.hash === '#') window.dispatchEvent(new HashChangeEvent('hashchange')); setTimeout(checkChests, 400); };
+    modal.addEventListener('click', (e) => {
+      if (e.target.id === 'chok') done();
+      if (e.target.id === 'chwear') { P.equip[it.slot] = it.id; save(); renderHud(); done(); }
+    });
   }
   function checkChests() {
     const c = nextChest();
@@ -592,7 +643,7 @@
     itemState, lockLabel, lockProgress, rarity, collection, weeklyDeals, isDeal, priceOf, dealsEnd, DEAL_PCT, setInfo, claimSet, wearSet, pieceOwned, questProgress, checkQuests, pace, comboLine, say, buyItem, buyBoost, useItem, boostActive, addCoins, equip, mascotSVG, setMode, setProfile, lookState, buyLook, setLook,
     answer, resetCombo, getCombo, addXP, sound, confetti, floatText, toast,
     renderHud, applyTheme, toggleSound, currentStreak,
-    weekState, claimToday, CHESTS, nextChest, checkChests, savableDays, useFreeze,
+    weekState, claimToday, CHESTS, nextChest, checkChests, savableDays, useFreeze, chestSVG, CHEST_LOOK,
     onTrainingEnd, onExamEnd, onSurvivalEnd, onDailyEnd,
     reset() { localStorage.removeItem(KEY); load(); applyTheme(); renderHud(); },
   };
