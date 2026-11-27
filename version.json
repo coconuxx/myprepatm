@@ -1,7 +1,14 @@
 {
- "version": "0.2.0",
- "date": "2026-11-26",
+ "version": "0.2.1",
+ "date": "2026-11-27",
  "history": [
+  {
+   "version": "0.2.1",
+   "date": "2026-11-27",
+   "notes": [
+    "Page d’invitation pour découvrir et installer l’appli"
+   ]
+  },
   {
    "version": "0.2.0",
    "date": "2026-11-26",
