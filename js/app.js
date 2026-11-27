@@ -319,12 +319,27 @@
   function weekCard() {
     const W = R.weekState(); const n = W.filter((d) => d.done).length;
     const cur = W.find((d) => d.today); const c = R.nextChest(); const st = R.currentStreak();
-    const todayLine = cur.done ? `Case du jour ouverte : ${cur.gift.label}` : `Aujourd’hui : ${cur.gift.label}`;
+    const sv = R.savableDays();
+    const todayLine = sv.length && sv.length <= 2 ? `<span class="hw-warn">${TM.icon('snow')} ${dayNames(sv)} raté${sv.length > 1 ? 's' : ''} : utilise ${sv.length > 1 ? `${sv.length} gels` : 'un gel'} pour garder ta série</span>`
+      : cur.done ? `Case du jour ouverte : ${cur.gift.label}` : `Aujourd’hui : ${cur.gift.label}`;
     return `<button class="home-week pop-in" type="button" id="home-week" aria-haspopup="dialog" aria-label="Ta semaine, ${n} jour${n > 1 ? 's' : ''} sur 7. Voir les coffres de série">
       <span class="home-week-h"><b>Ta semaine · ${n}/7</b><span>Coffres ${TM.icon('chevron')}</span></span>
-      <span class="home-week-days">${W.map((d) => `<span class="hw-d ${d.done ? 'done' : d.today ? 'cur' : d.past ? 'missed' : ''} ${!d.done && d.gift.icon === 'gift' ? 'big' : ''}" title="${d.gift.label}">${d.done ? TM.icon('check') : giftIco(d.gift)}<i>${d.letter}</i></span>`).join('')}</span>
+      <span class="home-week-days">${W.map((d) => `<span class="hw-d ${d.done ? 'done' : d.frozen ? 'frozen' : d.today ? 'cur' : d.past ? 'missed' : ''} ${!d.done && !d.frozen && d.gift.icon === 'gift' ? 'big' : ''}" title="${d.frozen ? 'Jour sauvé par un gel' : d.gift.label}">${d.done ? TM.icon('check') : d.frozen ? TM.icon('snow') : giftIco(d.gift)}<i>${d.letter}</i></span>`).join('')}</span>
       <span class="home-week-l">${todayLine}${c ? ` · coffre à ${c.n} jours de série${st ? ` : encore ${Math.max(0, c.n - st)}` : ''}` : ''}</span>
     </button>`;
+  }
+  const dayNames = (keys) => keys.map((k) => new Date(k + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' })).map((n, i) => (i ? n : n[0].toUpperCase() + n.slice(1))).join(' et ');
+  // Gel de série : sauver le ou les jours ratés depuis le dernier jour actif
+  function freezeBlock() {
+    const sv = R.savableDays(); const have = R.profile.inv.freeze;
+    if (!sv.length || sv.length > 2) return '';
+    const need = sv.length;
+    return `<div class="chl-freeze">
+      <span class="chl-freeze-i">${TM.icon('snow')}</span>
+      <span><b>${dayNames(sv)} raté${need > 1 ? 's' : ''}</b><small>Ta série de ${R.profile.streak} jour${R.profile.streak > 1 ? 's' : ''} s’arrête si tu ne le${need > 1 ? 's' : ''} sauves pas. Tu as ${have} gel${have > 1 ? 's' : ''}.</small></span>
+      ${have >= need ? `<button class="btn primary" type="button" id="chl-freeze">Utiliser ${need > 1 ? `${need} gels` : 'un gel'}</button>`
+        : `<a class="btn" href="#shop/bonus" id="chl-shop">Acheter un gel</a>`}
+    </div>`;
   }
   function openChests() {
     const st = R.currentStreak(); const got = R.profile.chests || {};
@@ -332,6 +347,7 @@
     bg.className = 'modal-bg';
     bg.innerHTML = `<div class="modal pop chest-list" role="dialog" aria-modal="true" aria-labelledby="chl-h">
       <h2 id="chl-h">Coffres de série</h2>
+      ${freezeBlock()}
       <p class="muted">Série actuelle : ${st} jour${st > 1 ? 's' : ''}. Chaque palier ouvre un coffre, une seule fois.</p>
       <ul>${R.CHESTS.map((c) => { const done = got[c.n]; const next = !done && R.nextChest() === c;
         return `<li class="${done ? 'done' : next ? 'next' : ''}"><span class="chl-i">${TM.icon(done ? 'check' : next ? 'gift' : 'lock')}</span><b>${c.n} j</b><span>${c.label}${next ? `<small>encore ${Math.max(0, c.n - st)} jour${c.n - st > 1 ? 's' : ''}</small>` : ''}</span></li>`; }).join('')}</ul>
@@ -340,6 +356,10 @@
     document.body.appendChild(bg);
     const close = () => bg.remove();
     bg.querySelector('#chl-ok').onclick = close;
+    const fz = bg.querySelector('#chl-freeze');
+    if (fz) fz.onclick = () => { if (R.useFreeze()) { close(); home(); openChests(); } };
+    const sh = bg.querySelector('#chl-shop');
+    if (sh) sh.onclick = close;
     bg.onclick = (e) => { if (e.target === bg) close(); };
     bg.querySelector('#chl-ok').focus();
   }
@@ -1341,7 +1361,7 @@
       <h2>Ce qui est enregistré sur ton appareil</h2>
       <p>Pour que l’appli fonctionne, ta progression est enregistrée <b>uniquement dans ton navigateur</b> (stockage local, « localStorage »). Ces données ne nous sont jamais envoyées :</p>
       <ul>
-        <li><code>tm_profile</code> : prénom ou pseudo (facultatif), apparence de l’avatar (dessin, aucune photo), date d’examen et score visé, objectif quotidien, XP, niveau, pièces virtuelles, options et accessoires obtenus en boutique, badges, série de jours, réglages (apparence, son, mode concentration), suivi des missions du jour, cases de la semaine et coffres de série ouverts ;</li>
+        <li><code>tm_profile</code> : prénom ou pseudo (facultatif), apparence de l’avatar (dessin, aucune photo), date d’examen et score visé, objectif quotidien, XP, niveau, pièces virtuelles, options et accessoires obtenus en boutique, badges, série de jours, réglages (apparence, son, mode concentration), suivi des missions du jour, cases de la semaine, jours sauvés par un gel et coffres de série ouverts ;</li>
         <li><code>tm_history</code> : tes 200 dernières sessions (date, mode, score) ;</li>
         <li><code>tm_used_…</code> : les questions déjà vues, pour éviter de te les reposer ;</li>
         <li><code>tm_errors</code> : ton carnet d’erreurs (les questions ratées à revoir, la réponse que tu avais donnée, ta progression sur celles-ci et les dates où tu les as ajoutées ou maîtrisées) ;</li>

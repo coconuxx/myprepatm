@@ -66,7 +66,7 @@
   const BOOSTS = [
     { id: 'fifty', name: 'Joker 50/50', icon: 'half', price: 15, max: 10, desc: 'Retire deux mauvaises réponses (entraînement, défi, survie).' },
     { id: 'life', name: 'Vie bonus', icon: 'heart', price: 25, max: 5, desc: 'Commence une partie de survie avec 4 vies.' },
-    { id: 'freeze', name: 'Gel de série', icon: 'snow', price: 60, max: 2, desc: 'Protège ta série si tu manques un jour. S’utilise tout seul.' },
+    { id: 'freeze', name: 'Gel de série', icon: 'snow', price: 60, max: 2, desc: 'Protège ta série si tu manques un jour. S’utilise tout seul, ou depuis « Ta semaine » sur l’accueil.' },
     { id: 'boost', name: 'Double XP', icon: 'zap', price: 50, desc: 'Toute l’XP gagnée compte double pendant 20 minutes.' },
   ];
   const owns = (id) => P.owned.includes(id);
@@ -278,10 +278,9 @@
     const d = today();
     P.days[d] = (P.days[d] || 0) + n;
     if (P.days[d] >= goal() && P.lastActive !== d) {
-      const gap = P.lastActive ? dayDiff(P.lastActive, d) : null;
-      const missed = gap ? gap - 1 : 0;
-      if (gap === 1) P.streak++;
-      else if (gap && missed <= P.inv.freeze) { P.inv.freeze -= missed; P.streak++; toast(I('snow'), `Gel de série utilisé : ta série est sauvée`); }
+      const missed = P.lastActive ? missedSince(P.lastActive, d) : null;
+      if (missed && !missed.length) P.streak++;
+      else if (missed && missed.length <= P.inv.freeze) { freezeDays(missed); P.streak++; toast(I('snow'), `Gel de série utilisé : ta série est sauvée`); }
       else P.streak = 1;
       P.lastActive = d;
       P.bestStreak = Math.max(P.bestStreak, P.streak);
@@ -310,7 +309,7 @@
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start); d.setDate(d.getDate() + i); const k = dayKey(d);
       const done = !!P.gifts[k] || (P.days[k] || 0) >= goal();
-      return { key: k, letter: 'LMMJVSD'[i], gift: weekGift(i), done, today: k === t, past: k < t };
+      return { key: k, letter: 'LMMJVSD'[i], gift: weekGift(i), done, frozen: !done && !!(P.frozen || {})[k], today: k === t, past: k < t };
     });
   }
   function claimToday() {
@@ -364,8 +363,24 @@
   }
   function currentStreak() {
     if (!P.lastActive) return 0;
-    const gap = dayDiff(P.lastActive, today());
-    return gap <= 1 || gap - 1 <= P.inv.freeze ? P.streak : 0;
+    return missedSince(P.lastActive, today()).length <= P.inv.freeze ? P.streak : 0;
+  }
+  // ---------- Gel de série : un jour gelé compte comme un jour actif ----------
+  // Jours ratés (ni objectif atteint, ni gel) strictement entre deux dates AAAA-MM-JJ
+  function missedSince(from, to) {
+    const out = []; const d = new Date(from + 'T12:00'); const end = new Date(to + 'T12:00');
+    for (d.setDate(d.getDate() + 1); d < end; d.setDate(d.getDate() + 1)) { const k = d.toLocaleDateString('fr-CA'); if (!(P.frozen || {})[k]) out.push(k); }
+    return out.slice(-400);
+  }
+  function freezeDays(keys) { P.frozen = Object.assign({}, P.frozen); keys.forEach((k) => { P.frozen[k] = true; }); P.inv.freeze -= keys.length; save(); }
+  // Jours ratés depuis le dernier jour actif, que des gels peuvent encore sauver (série toujours en cours)
+  function savableDays() { return P.lastActive && P.streak ? missedSince(P.lastActive, today()) : []; }
+  function useFreeze() {
+    const m = savableDays();
+    if (!m.length || P.inv.freeze < m.length) return false;
+    freezeDays(m); sound('badge'); renderHud();
+    toast(I('snow'), `Gel utilisé : ta série de ${P.streak} jour${P.streak > 1 ? 's' : ''} est sauvée`);
+    return true;
   }
 
   // ---------- Gains ----------
@@ -577,7 +592,7 @@
     itemState, lockLabel, lockProgress, rarity, collection, weeklyDeals, isDeal, priceOf, dealsEnd, DEAL_PCT, setInfo, claimSet, wearSet, pieceOwned, questProgress, checkQuests, pace, comboLine, say, buyItem, buyBoost, useItem, boostActive, addCoins, equip, mascotSVG, setMode, setProfile, lookState, buyLook, setLook,
     answer, resetCombo, getCombo, addXP, sound, confetti, floatText, toast,
     renderHud, applyTheme, toggleSound, currentStreak,
-    weekState, claimToday, CHESTS, nextChest, checkChests,
+    weekState, claimToday, CHESTS, nextChest, checkChests, savableDays, useFreeze,
     onTrainingEnd, onExamEnd, onSurvivalEnd, onDailyEnd,
     reset() { localStorage.removeItem(KEY); load(); applyTheme(); renderHud(); },
   };

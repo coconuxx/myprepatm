@@ -1810,3 +1810,13 @@ body[data-view="profile"]:has(.pf, .set-page) { background-image: none; }
 .chest-ico svg { width: 130px; height: 130px; }
 .chest-ico > svg:only-child { width: 72px; height: 72px; color: var(--coral); }
 @media (prefers-reduced-motion: reduce) { .home-week { transition: none; } }
+/* Gel de série depuis « Ta semaine » */
+.hw-d.frozen { background: color-mix(in srgb, #5ab4ff 22%, var(--surface)); color: #2f8de0; }
+.hw-warn { display: inline-flex; align-items: center; gap: 5px; color: var(--text); font-weight: 600; }
+.hw-warn svg { width: 15px; height: 15px; color: #2f8de0; flex: none; }
+.chl-freeze { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; padding: 12px; border-radius: 15px; background: color-mix(in srgb, #5ab4ff 16%, var(--surface)); text-align: left; }
+.chl-freeze-i { color: #2f8de0; display: grid; place-items: center; }
+.chl-freeze-i svg { width: 24px; height: 24px; }
+.chl-freeze b { display: block; }
+.chl-freeze small { display: block; color: var(--muted); font-size: .8rem; }
+.chl-freeze .btn { grid-column: 1 / -1; justify-content: center; }
