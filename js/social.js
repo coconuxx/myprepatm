@@ -105,7 +105,7 @@
 
   // ---------- Vues ----------
   const route = () => location.hash.replace('#', '').split('/');
-  const TABS = [['', 'Profil', 'award'], ['friends', 'Amis', 'heart'], ['duels', 'Défis', 'zap']];
+  const TABS = [['', 'Profil', 'award'], ['friends', 'Amis', 'heart'], ['ranking', 'Classement', 'trophy'], ['duels', 'Défis', 'zap']];
   function tabs(cur) {
     const badge = { friends: pendingCount() };
     return `<nav class="social-tabs" aria-label="Moi et mes amis">${TABS.map(([id, l, ic]) => `<a href="#profile${id ? '/' + id : ''}" class="${cur === (id || 'me') ? 'on' : ''}" ${cur === (id || 'me') ? 'aria-current="page"' : ''}>${I(ic)}<span>${l}</span>${badge[id] ? `<small>${badge[id]}</small>` : ''}</a>`).join('')}</nav>`;
@@ -120,8 +120,7 @@
     if (arg === 'u') return publicView(r[2]);
     if (arg === 'account') return accountView();
   }
-  // Le classement a son propre onglet dans la barre du bas : pas d'onglets du profil au-dessus.
-  const page = (cur, html) => { $app().innerHTML = (cur === 'ranking' ? '' : tabs(cur)) + `<div class="social-page pop-in">${html}</div>`; };
+  const page = (cur, html) => { $app().innerHTML = tabs(cur) + `<div class="social-page pop-in">${html}</div>`; };
   const shareBlock = () => `<div class="row center"><button class="btn primary" data-social-share>${I('check')} Copier mon lien</button><button class="btn" data-social-qr>${I('target')} Mon QR code</button></div>`;
   function wireShare() {
     const a = me();

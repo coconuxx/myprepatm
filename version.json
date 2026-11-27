@@ -1,14 +1,7 @@
 {
- "version": "0.2.9",
+ "version": "0.2.8",
  "date": "2026-11-28",
  "history": [
-  {
-   "version": "0.2.9",
-   "date": "2026-11-28",
-   "notes": [
-    "Le classement n’apparaît plus que dans la barre du bas : le profil est plus simple"
-   ]
-  },
   {
    "version": "0.2.8",
    "date": "2026-11-28",
