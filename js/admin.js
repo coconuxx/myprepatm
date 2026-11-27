@@ -83,8 +83,8 @@
           <button class="btn" id="adm-coins" type="button">+100 pièces</button>
           <button class="btn" id="adm-xp" type="button">+200 XP</button>
           <button class="btn" id="adm-day" type="button">Rejouer la mission du jour</button>
-          <a class="btn" href="maquettes/premium.html">Maquette Premium</a>
         </div>
+        ${TM.premium ? TM.premium.adminHTML() : ''}
         ${TM.accounts ? TM.accounts.adminHTML() : ''}
         <p class="muted admin-soon">Les liens d’accès administrateur se créent et se retirent sur le Mac (admin-links.py).</p>
         <button class="btn ghost" id="adm-off" type="button">Quitter le mode administrateur sur cet appareil</button>
@@ -103,6 +103,7 @@
     };
     if ($('adm-off')) $('adm-off').onclick = () => { lock(); rerender(); };
     if (TM.accounts && isAdmin()) TM.accounts.adminBind(rerender);
+    if (TM.premium && isAdmin()) TM.premium.adminBind(rerender);
 
     // Entrée cachée pour l'appli installée sur l'iPhone : elle ne partage pas la mémoire de Safari, et un lien
     // touché s'ouvre toujours dans Safari. 5 touches rapides sur la ligne « version » font apparaître un champ

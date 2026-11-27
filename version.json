@@ -1,7 +1,14 @@
 {
- "version": "0.2.6",
+ "version": "0.2.7",
  "date": "2026-11-27",
  "history": [
+  {
+   "version": "0.2.7",
+   "date": "2026-11-27",
+   "notes": [
+    "Petites améliorations et corrections"
+   ]
+  },
   {
    "version": "0.2.6",
    "date": "2026-11-27",

@@ -77,7 +77,8 @@
       <h3 class="cor-h">${head} <small>· réponse : ${ansLabel}</small></h3>
       ${tip ? `<p class="cor-one">${tip}</p>` : ''}
       ${fig ? `<div class="cor-fig">${fig}</div>` : ''}
-      ${steps.length ? `<details class="cor-more"><summary>Voir la méthode</summary><ol class="cor-steps">${steps.map((s) => `<li>${s}</li>`).join('')}</ol></details>` : ''}
+      ${steps.length && TM.premium && !TM.premium.has(1) ? TM.premium.lock('La méthode pas à pas', 'Les corrections complètes font partie de Premium.', 1) : ''}
+      ${steps.length && (!TM.premium || TM.premium.has(1)) ? `<details class="cor-more"><summary>Voir la méthode</summary><ol class="cor-steps">${steps.map((s) => `<li>${s}</li>`).join('')}</ol></details>` : ''}
     </section>`;
   }
 

@@ -1848,3 +1848,37 @@ body[data-view="profile"]:has(.pf, .set-page) { background-image: none; }
 .chest-after[hidden] { display: none; }
 
 .chs-lock { filter: saturate(.6) brightness(.85); opacity: .85; }
+
+/* ===== Premium (js/premium.js) : verrous en test administrateur et page #premium ===== */
+.prem-lock { display: flex; align-items: center; gap: 12px; margin: 12px 0; padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); }
+.prem-lock-i { color: var(--muted); flex: none; }
+.prem-lock-t { flex: 1; display: flex; flex-direction: column; font-size: .9rem; line-height: 1.35; }
+.prem-lock-t span { color: var(--muted); }
+.prem-lock-b { flex: none; padding: 8px 14px; border-radius: 99px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: .85rem; }
+.prem-page { max-width: 520px; margin: 0 auto; }
+.prem-hero { margin-top: 10px; padding: 24px 20px; border-radius: 22px; background: linear-gradient(160deg, var(--indigo), var(--indigo-2)); color: #fff; text-align: center; }
+.prem-hero h1 { margin: 6px 0 4px; } .prem-hero p { margin: 0; color: var(--peri); }
+.prem-logo { width: 54px; height: 54px; border-radius: 14px; display: block; margin: 0 auto 8px; }
+.prem-badge { color: #ffd166; font-weight: 700; font-size: .85rem; }
+.prem-now { text-align: center; color: var(--muted); }
+.prem-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px; border-radius: 16px; background: var(--surface-2); margin-top: 18px; }
+.prem-seg-b { position: relative; border: 0; border-radius: 12px; padding: 10px 4px 8px; background: none; color: var(--text); font: inherit; cursor: pointer; }
+.prem-seg-b b { display: block; } .prem-seg-b small { display: block; font-size: .74rem; color: var(--muted); font-weight: 600; } .prem-seg-b span { font-size: .82rem; color: var(--muted); font-weight: 600; }
+.prem-seg-b.on { background: var(--surface); box-shadow: 0 2px 8px rgba(26,33,80,.12); }
+.prem-tag { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 1px 8px; border-radius: 99px; background: var(--coral); color: #fff; font: 700 .7rem var(--font); white-space: nowrap; }
+.prem-sum { text-align: center; color: var(--muted); font-size: .9rem; }
+.prem-grp { margin: 18px 4px 6px; font-size: .85rem; font-weight: 600; color: var(--muted); }
+.prem-list { background: var(--surface); border-radius: 14px; overflow: hidden; }
+.prem-row { display: flex; gap: 12px; align-items: center; padding: 11px 14px; }
+.prem-row + .prem-row { border-top: 1px solid var(--border); }
+.prem-ico { width: 34px; height: 34px; flex: none; border-radius: 9px; display: grid; place-items: center; color: #fff; }
+.prem-row-t { flex: 1; display: flex; flex-direction: column; line-height: 1.3; }
+.prem-row-t span { color: var(--muted); font-size: .84rem; }
+.prem-chip { font-style: normal; font-size: .68rem; padding: 1px 6px; border-radius: 99px; background: color-mix(in srgb, var(--gold) 22%, var(--surface)); color: var(--gold-dark); }
+.prem-chip.soon { background: var(--surface-2); color: var(--muted); }
+.prem-state { font-style: normal; width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: .75rem; font-weight: 700; }
+.prem-feat.in .prem-state { background: var(--ok); color: #fff; } .prem-feat.in .prem-state::before { content: "✓"; }
+.prem-feat.out { opacity: .45; } .prem-feat.out .prem-state { border: 2px solid var(--muted); }
+.prem-cta { width: 100%; margin-top: 18px; }
+.prem-fine { text-align: center; color: var(--muted); font-size: .8rem; }
+.prem-admin { margin-top: 12px; }

@@ -49,6 +49,7 @@
       daily: dailyView, profile: () => (TM.social && TM.social.handles(arg) ? TM.social.view(arg) : profileView(arg)), history: historyView, shop: () => shopView(arg), errors: errorsView,
       invite: () => TM.social.invite(arg),
       legal: legalView, privacy: privacyView,
+      premium: () => (TM.premium ? TM.premium.view($app) : home()),
     };
     // Compte : écran de connexion / création tant que personne n'est connecté sur cet appareil (js/accounts.js)
     const gated = TM.accounts && !['legal', 'privacy'].includes(view) && TM.accounts.needsGate();
@@ -379,7 +380,8 @@
   function plainText(h) { const d = document.createElement('div'); d.innerHTML = String(h || '').replace(/<[^>]+>/g, ' '); return d.textContent.replace(/\s+/g, ' ').trim(); }
   function errorsView() {
     const E = TM.errors; const n = E.count(); const by = E.byTheme();
-    const items = E.items.slice(0, 25);
+    const full = !TM.premium || TM.premium.has(2); // Premium : carnet complet à partir du pass 3 mois
+    const items = E.items.slice(0, full ? 25 : 5);
     const dots = (k) => Array.from({ length: E.MASTER }, (_, i) => `<span class="errors-dot ${i < k ? 'on' : ''}"></span>`).join('');
     $app.innerHTML = `${pageHead('errors', 'Carnet d’erreurs', n ? `${n} question${n > 1 ? 's' : ''} à revoir. Réussis-en une ${E.MASTER} fois de suite pour la maîtriser.` : 'Aucune erreur à revoir pour l’instant.', 'history')}
       <section class="errors-sum pop-in">
@@ -387,15 +389,16 @@
         <div class="errors-k"><b>${E.mastered}</b><span>maîtrisées</span></div>
         <div class="errors-k"><b>${E.reviewedToday()}</b><span>revues aujourd’hui</span></div>
       </section>
-      ${n ? `<button class="btn primary big-btn" id="errors-go">Revoir ${Math.min(10, n)} erreur${Math.min(10, n) > 1 ? 's' : ''}</button>`
+      ${n && !full ? TM.premium.lock('Revoir tes erreurs en séries', 'Les séries de révision et le tri par sous-test font partie du carnet complet.', 2) : ''}
+      ${n && full ? `<button class="btn primary big-btn" id="errors-go">Revoir ${Math.min(10, n)} erreur${Math.min(10, n) > 1 ? 's' : ''}</button>`
           : `<div class="empty errors-empty">${TM.icon('check')}<p>Ton carnet est vide. Chaque question ratée en entraînement, au défi du jour, en survie ou en examen blanc arrivera ici.</p><a class="btn" href="#train">S’entraîner</a></div>`}
-      ${n ? `<h2>Par sous-test</h2>
+      ${n && full ? `<h2>Par sous-test</h2>
       <div class="rows">${F.subtests.filter((t) => by[t.id]).map((t) => `<button class="row-i errors-row" data-theme="${t.id}">
           <span class="ico ico-${t.id}">${t.icon}</span>
           <span class="row-t"><b>${t.name}</b><span>${by[t.id]} erreur${by[t.id] > 1 ? 's' : ''} · revoir celles-ci</span></span>
           <span class="errors-n">${by[t.id]}</span>${TM.icon('arrow', 'chev')}
-        </button>`).join('')}</div>
-      <h2>Dernières erreurs</h2>
+        </button>`).join('')}</div>` : ''}
+      ${n ? `<h2>Dernières erreurs</h2>
       <div class="review">${items.map((x, i) => {
         const t = byId(x.q.theme); const txt = plainText(x.q.prompt);
         return `<details class="rv ko errors-item"><summary><span class="errors-tag">${t ? t.short : ''}</span> ${esc(txt.slice(0, 90))}${txt.length > 90 ? '…' : ''}</summary>
@@ -511,6 +514,9 @@
   }
   function trainSetup(id) {
     const t = byId(id); if (!t) return go('train');
+    // Premium (js/premium.js) : sans pass, 2 séries par jour (verrou actif seulement en test administrateur)
+    if (TM.premium && TM.premium.seriesLeft() <= 0) { $app.innerHTML = `<a class="back" href="#train">← Thèmes</a>${TM.premium.seriesDoneHTML('#')}`; return; }
+    const left = TM.premium ? TM.premium.seriesLeft() : Infinity;
     $app.innerHTML = `<a class="back" href="#train">← Thèmes</a>
       <div class="setup pop-in">
         <div class="setup-ico ico-${id}">${t.icon}</div>
@@ -520,6 +526,7 @@
         <label class="lbl">Mode</label>
         <div class="seg" id="timed"><button data-v="0" class="on">Libre</button><button data-v="1">Chronométré (1 min 20 / question)</button></div>
         <button class="btn primary big-btn" id="start">Commencer</button>
+        ${left !== Infinity ? `<p class="muted prem-left">Encore ${left} série${left > 1 ? 's' : ''} aujourd’hui · <a href="#premium">illimitées avec Premium</a></p>` : ''}
         <a class="btn ghost" href="#lessons/${id}">Revoir la leçon d’abord</a>
       </div>`;
     document.querySelectorAll('.seg').forEach((seg) => seg.addEventListener('click', (e) => {
@@ -529,6 +536,7 @@
     document.getElementById('start').onclick = () => {
       const n = +document.querySelector('#count .on').dataset.v;
       const timed = document.querySelector('#timed .on').dataset.v === '1';
+      if (TM.premium && left !== Infinity) TM.premium.useSeries();
       startPractice('train', id, TM.gen[id](n), timed ? n * 80 : null);
     };
   }
@@ -573,7 +581,7 @@
       <p>Conditions réelles : <strong>6 sous-tests de 15 questions</strong>, <strong>20 minutes chacun</strong>, dans l’ordre officiel. Le temps restant ne se reporte pas. Correction à la fin.</p>
       <div class="order">${F.subtests.map((t, i) => `<div class="order-i"><span class="num">${i + 1}</span><span class="ico ico-${t.id}">${t.icon}</span>${t.name}</div>`).join('')}</div>
       <p class="muted">Pas de points négatifs : réponds à tout. Sans calculatrice. Examen complet : +100 XP et ${R.EARN.examFull} ${TM.coin('xs')}.</p>
-      <button class="btn primary big-btn" id="full">Examen complet (2 h)</button>
+      ${TM.premium && TM.premium.examsLeft() <= 0 ? TM.premium.examsDoneHTML() : `<button class="btn primary big-btn" id="full">Examen complet (2 h)</button>`}
       <button class="btn big-btn" id="mini">Mini-examen (6 × 5 questions, 42 min)</button>
     </div>`;
     const start = (n, minutes, full) => {
@@ -584,7 +592,8 @@
       };
       go('quiz');
     };
-    document.getElementById('full').onclick = () => start(F.questionsPerSubtest, F.minutesPerSubtest, true);
+    const full = document.getElementById('full');
+    if (full) full.onclick = () => { if (TM.premium && TM.premium.examsLeft() !== Infinity) TM.premium.useExam(); start(F.questionsPerSubtest, F.minutesPerSubtest, true); };
     document.getElementById('mini').onclick = () => start(5, 7, false);
   }
 
@@ -1321,7 +1330,7 @@
   }
 
   // Clés propres à l'appareil et progression rangée des AUTRES comptes : jamais effacées pour un seul compte
-  const DEVICE_KEYS = ['tm_accounts', 'tm_admin', 'tm_seen_version'];
+  const DEVICE_KEYS = ['tm_accounts', 'tm_admin', 'tm_seen_version', 'tm_prem_test'];
   const progressKeys = () => { try { return Object.keys(localStorage).filter((k) => k.startsWith('tm_') && !k.startsWith('tm_acc_') && !DEVICE_KEYS.includes(k)); } catch (e) { return []; } };
   // Efface la progression du compte connecté (les autres comptes de l'appareil ne sont pas touchés)
   function clearLocalData() {
@@ -1516,6 +1525,8 @@
     }
     const i = parseInt(chArg, 10) - 1;
     const c = C.chapters[i]; if (!c) return go(`lessons/${k}/cours`);
+    // Premium (js/premium.js) : sans le pass 3 mois, seul le 1er chapitre (verrou actif seulement en test administrateur)
+    if (i > 0 && TM.premium && !TM.premium.has(2)) { $app.innerHTML = `<a class="back" href="#lessons/${k}/cours">← Sommaire du cours</a><h1>${c.t}</h1>${TM.premium.lock('Le cours complet', 'Le 1er chapitre est ouvert à tous ; les suivants font partie de Premium.', 2)}`; return; }
     if (!read.includes(i)) saveLessonProg(k, { course: [...read, i].sort((a, b) => a - b) });
     const last = i === C.chapters.length - 1;
     $app.innerHTML = `<a class="back" href="#lessons/${k}/cours">← Sommaire du cours</a>
@@ -1538,10 +1549,13 @@
     if (!C || !C.cards.length) return go(`lessons/${k}`);
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let deck; let pos; let flipped; let known; let review;
-    const start = (ids) => { deck = ids.slice().sort(() => Math.random() - 0.5); pos = 0; flipped = false; known = []; review = []; show(); };
+    // Premium (js/premium.js) : sans le pass 3 mois, les 5 premières fiches (verrou actif seulement en test administrateur)
+    const allCards = !TM.premium || TM.premium.has(2);
+    const start = (ids) => { if (!allCards) ids = ids.filter((x) => x < 5); deck = ids.slice().sort(() => Math.random() - 0.5); pos = 0; flipped = false; known = []; review = []; show(); };
     $app.innerHTML = `<a class="back" href="#lessons/${k}">← ${L.title}</a>
       <header class="lesson-head pop-in"><span class="lesson-kicker"><span class="ico">${TM.icon('sprout')}</span>Fiches de révision</span><h1>${L.title}</h1>
       <p class="lesson-lead">Lis la question, essaie de répondre de tête, puis retourne la fiche. Sois honnête : les fiches « à revoir » reviennent à la fin.</p></header>
+      ${!allCards && C.cards.length > 5 ? TM.premium.lock(`${C.cards.length - 5} autres fiches`, 'Toutes les fiches de révision font partie de Premium.', 2) : ''}
       <div id="lesson-deck"></div>`;
     const box = document.getElementById('lesson-deck');
     const flip = () => {
