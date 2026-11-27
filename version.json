@@ -1,7 +1,17 @@
 {
- "version": "0.2.7",
- "date": "2026-11-27",
+ "version": "0.2.8",
+ "date": "2026-11-28",
  "history": [
+  {
+   "version": "0.2.8",
+   "date": "2026-11-28",
+   "notes": [
+    "Boutique plus épurée : 6 rayons, dont « Extras » pour les fonds, compagnons, effets et gestes",
+    "Bouton « Voir plus » dans la boutique, avec les objets que tu peux acheter en premier",
+    "Nouveau filtre « Dans mon budget » et cabine d'essayage plus discrète sur téléphone",
+    "Petites améliorations et corrections"
+   ]
+  },
   {
    "version": "0.2.7",
    "date": "2026-11-27",

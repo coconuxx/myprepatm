@@ -1135,23 +1135,21 @@
   // ---------- Boutique ----------
   function shopView(tab) {
     tab = tab || shopView.tab || 'look';
+    // Fonds, compagnons, effets et gestes sont regroupés dans « Extras » (les anciens liens #shop/bg… y mènent)
+    if (['bg', 'pet', 'aura', 'emote'].includes(tab)) { shopView.sub = tab; tab = 'fx'; }
     if (tab !== shopView.tab) shopView.try = null;
     shopView.tab = tab;
+    // L’onglet ouvert reste dans l’adresse : un rechargement ou un lien rouvre le même rayon
+    if (location.hash.startsWith('#shop') && location.hash !== `#shop/${tab}`) window.history.replaceState(null, '', `#shop/${tab}`);
+    if (!shopView.keys) { shopView.keys = true; document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.dataset.view === 'shop' && shopView.try && !document.querySelector('.modal-bg')) { shopView.try = null; shopView(shopView.tab); } }); }
     const P = R.profile, M = TM.mascot;
     const price = (n) => `<span class="price">${TM.coin('xs')} ${n}</span>`;
     // Prix d’un objet, barré + réduit s’il fait partie de la sélection de la semaine
     const itemPrice = (x) => (R.isDeal(x) ? `<span class="shop-deal-p"><s>${x.price}</s>${price(R.priceOf(x))}</span>` : price(x.price));
-    const tabOf = (slot) => (M.ACC_SLOTS.includes(slot) ? 'acc' : slot);
-    const TABS = [['look', 'Apparence', 'shirt'], ['acc', 'Accessoires', 'glasses'], ['bg', 'Fonds', 'image'], ['pet', 'Compagnons', 'paw'], ['aura', 'Effets', 'sparkle'], ['emote', 'Gestes', 'hand'], ['sets', 'Ensembles', 'award'], ['coll', 'Collection', 'trophy'], ['bonus', 'Bonus', 'gift']];
-    const slotsOf = (t) => (t === 'acc' ? M.ACC_SLOTS : [t]);
-    const countOf = (t) => {
-      if (t === 'bonus') return '';
-      if (t === 'coll') { const c = R.collection(); return `${c.owned}/${c.total}`; }
-      if (t === 'sets') return `${M.SETS.filter((x) => R.setInfo(x).complete).length}/${M.SETS.length}`;
-      if (t === 'look') { const l = Object.entries(M.LOOK).flatMap(([c, os]) => os.filter((o) => o.price).map((o) => R.lookState(c, o.id) === 'owned')); return `${l.filter(Boolean).length}/${l.length}`; }
-      const its = R.ITEMS.filter((x) => slotsOf(t).includes(x.slot) && x.price !== 0);
-      return `${its.filter((x) => R.itemState(x) === 'owned').length}/${its.length}`;
-    };
+    const GROUPS = { acc: M.ACC_SLOTS, fx: ['bg', 'pet', 'aura', 'emote'] };
+    const tabOf = (slot) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(slot)) || slot;
+    const TABS = [['look', 'Apparence'], ['acc', 'Accessoires'], ['fx', 'Extras'], ['sets', 'Ensembles'], ['coll', 'Collection'], ['bonus', 'Bonus']];
+    const slotsOf = (t) => GROUPS[t] || [t];
 
     // Cabine d’essayage : tenue actuelle + objet à l’essai (rien n’est acheté sans clic sur « Acheter »)
     const tr = shopView.try;
@@ -1178,7 +1176,7 @@
       if (st === 'buy') {
         action = P.coins >= cost
           ? `<button class="btn primary shop-buy" data-shop-buy>Acheter ${price(cost)}</button><div class="shop-after">Solde après achat : ${P.coins - cost} ${TM.coin('xs')}</div>`
-          : `<button class="btn shop-buy" disabled>Il te manque ${cost - P.coins} ${TM.coin('xs')}</button><div class="shop-after">Continue à t’entraîner pour gagner des pièces.</div>`;
+          : `<button class="btn shop-buy" disabled>Il te manque ${cost - P.coins} ${TM.coin('xs')}</button><button class="shop-after shop-earn-link" type="button" data-shop-earn>Comment gagner des pièces ?</button>`;
       } else {
         const lp = R.lockProgress(tryItem);
         action = `<div class="shop-lock">${TM.icon('lock')}<div><b>${lp.label}</b><span>${lp.hint}</span></div></div><span class="shop-bar"><i style="width:${lp.pct}%"></i></span>`;
@@ -1186,7 +1184,7 @@
       panel = `<div class="shop-try"><span class="shop-rar r-${rar.id}">${rar.name}</span>${tryItem && R.isDeal(tryItem) && st === 'buy' ? `<span class="shop-deal-tag">−${R.DEAL_PCT} % cette semaine</span>` : ''}<b class="shop-try-n">${name}</b><span class="muted small">À l’essai dans la cabine</span>${action}<button class="btn ghost shop-untry" data-shop-untry>Annuler l’essai</button></div>`;
     } else {
       const c = R.collection();
-      panel = `<div class="shop-try"><div class="shop-coll"><span>Collection</span><b>${c.owned} / ${c.total}</b></div><span class="shop-bar"><i style="width:${Math.round((c.owned / c.total) * 100)}%"></i></span>${tab !== 'coll' ? '<button class="btn ghost shop-untry" data-tab-go="coll">Voir ma collection</button>' : ''}</div>`;
+      panel = `<div class="shop-try shop-idle"><b>${tab === 'coll' ? 'Ta tenue du moment' : 'Touche un objet pour l’essayer'}</b><span class="muted small">${tab === 'coll' ? 'Touche un objet possédé pour l’enfiler.' : `Rien n’est acheté sans ton accord · ${c.owned}/${c.total} objets`}</span></div>`;
     }
 
     let main = '';
@@ -1199,12 +1197,11 @@
       const fmt = (d) => (d ? new Date(d + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '');
       const dateOf = (x) => P.ownedAt[x.id] || P.quests[x.id] || (x.badge && P.badges[x.badge]) || '';
       const mine = R.ITEMS.filter((x) => x.price !== 0 && R.itemState(x) === 'owned');
-      const paceTxt = pc.days === null ? 'Entraîne-toi quelques jours : j’estimerai le temps qu’il te faut pour tout débloquer.'
-        : pc.remaining <= P.coins ? 'Tu as déjà de quoi acheter tout ce qui reste. Rien ne te résiste.'
-        : `À ton rythme (environ ${pc.perDay} pièces par jour d’entraînement, sur ${pc.activeDays} jour${pc.activeDays > 1 ? 's' : ''}), il te faudrait <b>environ ${pc.days} jour${pc.days > 1 ? 's' : ''} d’entraînement</b> pour acheter tout ce qui reste (${pc.remaining} pièces). Les objets de quête, de badge et de série ne s’achètent pas : ils se gagnent.`;
-      const tile = (v, l) => `<div class="shop-stat"><b>${v}</b><span>${l}</span></div>`;
-      main = `<div class="shop-stats">${tile(`${c.owned}/${c.total}`, 'objets')}${tile(`${setsDone}/${M.SETS.length}`, 'ensembles complets')}${tile(`${quests.filter((x) => P.quests[x.id]).length}/${quests.length}`, 'quêtes réussies')}${tile(`${Math.round((c.owned / c.total) * 100)} %`, 'de la boutique')}</div>
-        <p class="shop-pace">${TM.icon('timer')} <span>${paceTxt}</span></p>
+      const paceTxt = pc.days === null ? 'Entraîne-toi quelques jours : j’estimerai le temps pour tout débloquer.'
+        : pc.remaining <= P.coins ? 'Tu as de quoi acheter tout ce qui reste.'
+        : `Environ <b>${pc.days} jour${pc.days > 1 ? 's' : ''} d’entraînement</b> pour acheter tout le reste, à ton rythme.`;
+      main = `<p class="shop-sum"><b>${c.owned}/${c.total}</b> objets · <b>${setsDone}/${M.SETS.length}</b> ensembles · <b>${quests.filter((x) => P.quests[x.id]).length}/${quests.length}</b> quêtes</p>
+        <p class="shop-pace" title="${pc.days === null ? '' : `Environ ${pc.perDay} pièces par jour d’entraînement, ${pc.remaining} pièces restantes. Les objets de quête, de badge et de série se gagnent, ils ne s’achètent pas.`}">${TM.icon('timer')} <span>${paceTxt}</span></p>
         <h3 class="shop-h">Quêtes</h3>
         <div class="shop-quests">${quests.map((x) => { const qp = R.questProgress(x), done = !!P.quests[x.id];
           return `<button class="shop-quest ${done ? 'is-done' : ''}" data-shop-item="${x.id}">${M.preview(x.id, P.look, P.equip, { level: lvl, size: 56 })}<span class="shop-quest-b"><b>${x.name}</b><span>${done ? `Réussie le ${fmt(P.quests[x.id])} · touche pour ${P.equip[x.slot] === x.id ? 'retirer' : 'enfiler'}` : `${qp.label} · ${qp.hint}`}</span>${done ? '' : `<span class="shop-bar sm"><i style="width:${qp.pct}%"></i></span>`}</span></button>`; }).join('')}</div>
@@ -1228,11 +1225,22 @@
         }).join('')}</div>`;
     } else if (tab !== 'bonus') {
       const filter = shopView.filter || 'all';
-      const sub = tab === 'acc' ? shopView.sub || 'all' : 'all';
+      const sub = GROUPS[tab] && GROUPS[tab].includes(shopView.sub) ? shopView.sub : 'all';
       const lvl = R.levelInfo().level;
       let list = R.ITEMS.filter((x) => slotsOf(tab).includes(x.slot) && (sub === 'all' || x.slot === sub));
       if (filter === 'owned') list = list.filter((x) => R.itemState(x) === 'owned');
       if (filter === 'todo') list = list.filter((x) => R.itemState(x) !== 'owned');
+      if (filter === 'afford') list = list.filter((x) => R.itemState(x) === 'buy' && R.priceOf(x) <= P.coins);
+      // Achetables d’abord (promos en tête), puis possédés, puis trop chers, puis à gagner ; ordre d’origine conservé dans chaque groupe
+      const rank = (x) => { const st = R.itemState(x); if (st === 'buy') return R.priceOf(x) <= P.coins ? (R.isDeal(x) ? 0 : 1) : 3; return st === 'owned' ? 2 : 4; };
+      list = list.map((x, i) => [x, i, rank(x)]).sort((a, b) => a[2] - b[2] || a[1] - b[1]).map((a) => a[0]);
+      // « Voir plus » : 3 lignes au départ (9 sur téléphone, 12 sur ordinateur), puis 3 lignes de plus à chaque appui
+      const step = window.matchMedia('(max-width: 760px)').matches ? 9 : 12;
+      const moreKey = `${tab}|${sub}|${filter}`;
+      if (shopView.moreKey !== moreKey) { shopView.moreKey = moreKey; shopView.shown = step; }
+      const tryIdx = tr && tr.slot ? list.findIndex((x) => x.id === tr.id) : -1;
+      if (tryIdx >= shopView.shown) shopView.shown = Math.ceil((tryIdx + 1) / step) * step; // l’objet à l’essai reste visible
+      const rest = list.length - shopView.shown;
       const chips = (key, opts, cur) => `<div class="shop-chips" data-shop-chip="${key}">${opts.map(([v, l]) => `<button data-v="${v}" class="${cur === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
       const card = (x) => {
         const st = R.itemState(x);
@@ -1241,7 +1249,7 @@
         let foot;
         if (st === 'owned') foot = on ? `<span class="shop-worn">${TM.icon('check')} ${x.slot === 'emote' ? 'Actif' : 'Porté'}</span>` : `<span class="shop-own">Possédé · ${x.slot === 'emote' ? 'choisir' : 'enfiler'}</span>`;
         else if (st === 'buy') foot = itemPrice(x);
-        else { const lp = R.lockProgress(x); foot = `<span class="shop-lk">${TM.icon('lock')} ${lp.label}</span>`; }
+        else { const lp = R.lockProgress(x); const short = x.badge ? 'Badge' : x.season ? 'Saison' : x.quest ? 'Quête' : x.streak ? `Série ${x.streak} j` : lp.label; foot = `<span class="shop-lk" title="${lp.label}">${TM.icon('lock')} ${short}</span>`; }
         const cls = [`r-${rar.id}`, st === 'owned' && 'is-owned', on && 'is-on', locked && 'is-locked', st === 'buy' && P.coins < R.priceOf(x) && 'is-poor', tr && tr.slot && tr.id === x.id && 'is-try'].filter(Boolean).join(' ');
         return `<button class="shop-card ${cls}" data-shop-item="${x.id}" aria-label="${x.name}">
           ${on ? `<span class="shop-on">${TM.icon('check')}</span>` : st === 'buy' && R.isDeal(x) ? `<span class="shop-deal-tag">−${R.DEAL_PCT} %</span>` : ''}
@@ -1249,8 +1257,8 @@
           <span class="shop-n">${x.name}</span><span class="shop-foot">${foot}</span></button>`;
       };
       main = `
-        <div class="shop-toolbar">${tab === 'acc' ? chips('sub', [['all', 'Tout']].concat(M.ACC_SLOTS.map((s) => [s, M.SLOTS[s]])), sub) : ''}${chips('filter', [['all', 'Tout'], ['todo', 'À débloquer'], ['owned', 'Possédés']], filter)}</div>
-        ${list.length ? `<div class="shop-cards">${list.map(card).join('')}</div>` : '<p class="shop-empty">Rien ici pour l’instant.</p>'}`;
+        <div class="shop-toolbar">${GROUPS[tab] ? chips('sub', [['all', 'Tout']].concat(GROUPS[tab].map((s) => [s, M.SLOTS[s]])), sub) : ''}${chips('filter', [['all', 'Tout'], ['afford', 'Dans mon budget'], ['owned', 'Possédés']], filter)}</div>
+        ${list.length ? `<div class="shop-cards">${list.slice(0, shopView.shown).map(card).join('')}</div>${rest > 0 ? `<button class="btn shop-more" type="button" data-shop-more>Voir plus <span>(${rest})</span></button>` : ''}` : `<p class="shop-empty">${filter === 'afford' ? 'Rien dans ton budget pour l’instant. Encore quelques bonnes réponses !' : filter === 'owned' ? 'Tu n’as encore rien dans ce rayon.' : 'Rien ici pour l’instant.'}</p>`}`;
     }
     const bonus = `<div class="shop-grid">${R.BOOSTS.map((b) => {
       const have = b.id === 'boost' ? (R.boostActive() ? `actif · ${Math.ceil((P.boostUntil - Date.now()) / 60000)} min` : '') : `${P.inv[b.id]}${b.max ? ' / ' + b.max : ''} en stock`;
@@ -1264,19 +1272,20 @@
     }).join('')}</div>`;
 
     const end = new Date(R.dealsEnd().getTime() - 86400000).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-    const deals = tab === 'bonus' ? '' : `<section class="shop-deals" aria-label="Sélection de la semaine">
-      <div class="shop-deals-h"><b>Sélection de la semaine · −${R.DEAL_PCT} %</b><span>jusqu’au ${end}</span></div>
+    // Sélection de la semaine en une ligne : vignettes seules (nom au survol), prix barré sur la carte de l’objet
+    const deals = tab === 'bonus' ? '' : `<section class="shop-deals shop-deals-slim" aria-label="Sélection de la semaine">
+      <div class="shop-deals-h"><b>−${R.DEAL_PCT} % cette semaine</b><span>jusqu’au ${end}</span></div>
       <div class="shop-deals-l">${R.weeklyDeals().map((id) => { const x = R.ITEMS.find((i) => i.id === id); const own = R.itemState(x) === 'owned';
-        return `<button class="shop-deal ${own ? 'is-owned' : ''}" data-shop-deal="${x.id}">${M.preview(x.id, P.look, P.equip, { level: R.levelInfo().level, size: 40 })}<span><b>${x.name}</b>${own ? '<em>Possédé</em>' : itemPrice(x)}</span></button>`; }).join('')}</div></section>`;
+        return `<button class="shop-deal ${own ? 'is-owned' : ''}" data-shop-deal="${x.id}" title="${x.name}${own ? ' (possédé)' : ''}" aria-label="${x.name}${own ? ', possédé' : ''}">${M.preview(x.id, P.look, P.equip, { level: R.levelInfo().level, size: 40 })}${own ? `<i class="shop-deal-ok">${TM.icon('check')}</i>` : ''}</button>`; }).join('')}</div></section>`;
     const E = R.EARN;
     const scrollY = window.scrollY;
     $app.innerHTML = `
       <header class="shop-top"><h1>Boutique</h1><a class="shop-wallet" href="#shop/coll" title="Ma collection">${TM.coin()}<b>${P.coins}</b></a></header>
       <details class="shop-note"><summary>${TM.icon('check')} Pièces virtuelles, gagnées uniquement en jouant : jamais achetables avec de l’argent réel. <u>En savoir plus</u></summary><p>Elles ne sont ni remboursables ni transférables, n’ont aucune valeur hors de l’appli, et sont perdues si tu effaces les données de ton navigateur.</p></details>
       ${deals}
-      <nav class="shop-tabs" id="shoptabs" aria-label="Rayons de la boutique">${TABS.map(([id, l, ic]) => { const n = countOf(id); return `<button data-tab="${id}" class="${tab === id ? 'on' : ''}" ${tab === id ? 'aria-current="page"' : ''}>${TM.icon(ic)}<span>${l}</span></button>`; }).join('')}</nav>
-      ${tab === 'bonus' ? bonus : `<div class="shop-layout">
-        <aside class="shop-cabin" aria-label="Cabine d’essayage"><div class="shop-stage">${cabAva}<span class="shop-floor"></span></div>${panel}</aside>
+      <nav class="shop-tabs" id="shoptabs" aria-label="Rayons de la boutique">${TABS.map(([id, l]) => `<button data-tab="${id}" class="${tab === id ? 'on' : ''}" ${tab === id ? 'aria-current="page"' : ''}><span>${l}</span></button>`).join('')}</nav>
+      ${tab === 'bonus' ? bonus : `<div class="shop-layout" data-tab="${tab}">
+        <aside class="shop-cabin ${tryItem || tryLook || trySet ? 'is-trying' : ''}" aria-label="Cabine d’essayage"><div class="shop-stage">${cabAva}<span class="shop-floor"></span></div>${panel}</aside>
         <section class="shop-main">${main}</section></div>`}
       <details class="earn"><summary>Comment gagner des pièces ?</summary>
         <ul>
@@ -1290,7 +1299,7 @@
       </details>`;
     window.scrollTo(0, scrollY);
     const rerender = (playEmote) => { shopView(tab); if (playEmote) requestAnimationFrame(() => M.play(document.querySelector('.shop-stage .mascot'))); };
-    document.getElementById('shoptabs').onclick = (e) => { const b = e.target.closest('button'); if (b) shopView(b.dataset.tab); };
+    document.getElementById('shoptabs').onclick = (e) => { const b = e.target.closest('button'); if (b) { shopView.sub = 'all'; shopView(b.dataset.tab); } };
     $app.querySelectorAll('[data-shop-chip]').forEach((g) => g.onclick = (e) => { const b = e.target.closest('button'); if (b) { shopView[g.dataset.shopChip] = b.dataset.v; rerender(); } });
     $app.querySelectorAll('[data-boost]').forEach((b) => b.onclick = () => { if (R.buyBoost(b.dataset.boost)) { R.confetti(40); R.toast(TM.coin(), 'Bonus obtenu'); } rerender(); });
     $app.querySelectorAll('[data-shop-item]').forEach((b) => b.onclick = () => {
@@ -1309,13 +1318,20 @@
     };
     $app.querySelectorAll('[data-shop-deal]').forEach((b) => b.onclick = () => {
       const it = R.ITEMS.find((x) => x.id === b.dataset.shopDeal);
-      shopView.tab = tabOf(it.slot); shopView.filter = 'all'; if (shopView.tab === 'acc') shopView.sub = 'all';
+      shopView.tab = tabOf(it.slot); shopView.filter = 'all'; shopView.sub = 'all';
       shopView.try = R.itemState(it) === 'owned' ? null : { slot: it.slot, id: it.id }; R.sound('tick'); shopView(shopView.tab);
     });
     $app.querySelectorAll('[data-shop-tryset]').forEach((b) => b.onclick = () => { shopView.try = { set: b.dataset.shopTryset }; R.sound('tick'); rerender(true); });
     $app.querySelectorAll('[data-shop-claim]').forEach((b) => b.onclick = () => { const set = M.SETS.find((x) => x.id === b.dataset.shopClaim); if (R.claimSet(set.id)) { R.wearSet(set.id); R.confetti(90); R.toast(TM.coin(), `Ensemble <strong>${set.name}</strong> complet · +${set.bonus} ${TM.coin('xs')}`); } rerender(true); });
     $app.querySelectorAll('[data-shop-wear]').forEach((b) => b.onclick = () => { R.wearSet(b.dataset.shopWear); R.sound('tick'); shopView.try = null; rerender(true); });
     $app.querySelectorAll('[data-tab-go]').forEach((b) => b.onclick = () => shopView(b.dataset.tabGo));
+    const more = $app.querySelector('[data-shop-more]');
+    if (more) more.onclick = () => { shopView.shown += window.matchMedia('(max-width: 760px)').matches ? 9 : 12; R.sound('tick'); rerender(); };
+    const earn = $app.querySelector('[data-shop-earn]');
+    if (earn) earn.onclick = () => { const d = $app.querySelector('details.earn'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    // Onglet actif toujours visible dans la barre qui défile (mobile)
+    const tabsEl = document.getElementById('shoptabs'), onTab = tabsEl.querySelector('.on');
+    if (onTab && tabsEl.scrollWidth > tabsEl.clientWidth) tabsEl.scrollLeft = onTab.offsetLeft - (tabsEl.clientWidth - onTab.offsetWidth) / 2;
     const untry = $app.querySelector('[data-shop-untry]');
     if (untry) untry.onclick = () => { shopView.try = null; rerender(); };
     const ed = document.getElementById('lk-editor');

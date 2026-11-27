@@ -1882,3 +1882,69 @@ body[data-view="profile"]:has(.pf, .set-page) { background-image: none; }
 .prem-cta { width: 100%; margin-top: 18px; }
 .prem-fine { text-align: center; color: var(--muted); font-size: .8rem; }
 .prem-admin { margin-top: 12px; }
+
+/* ===== Boutique v6 : UX (moins de défilement, cabine collée seulement pendant un essai) ===== */
+.shop-tabs { position: relative; }
+@media (min-width: 761px) { .shop-tabs { flex-wrap: wrap; overflow: visible; } } /* sur ordinateur, tous les rayons visibles d’un coup */
+.shop-earn-link { padding: 0; border: 0; background: none; font: inherit; font-size: .8rem; font-weight: 700; color: var(--accent); text-decoration: underline; cursor: pointer; }
+@media (max-width: 760px) {
+  .shop-top .shop-wallet { display: none; } /* les pièces sont déjà dans la barre du haut */
+  .shop-top { margin: 2px 0 0; }
+  .shop-note { margin-bottom: 8px; font-size: .82rem; }
+  /* Cabine au repos : compacte et non collée ; pendant un essai : collée sous la barre du haut */
+  .shop-cabin:not(.is-trying) { position: static; padding: 8px 10px; box-shadow: none; }
+  .shop-cabin:not(.is-trying) .shop-stage { width: 76px; padding: 4px 0; }
+  .shop-cabin:not(.is-trying) .shop-stage .mascot { width: 64px; height: 64px; }
+  .shop-cabin:not(.is-trying) .shop-floor { display: none; }
+  .shop-cabin.is-trying { position: sticky; }
+  /* Une seule ligne de filtres qui défile */
+  .shop-toolbar { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin-bottom: 10px; }
+  .shop-toolbar::-webkit-scrollbar { display: none; }
+  .shop-chips { flex: none; overflow: visible; max-width: none; }
+  /* 3 objets par ligne */
+  .shop-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .shop-card { padding: 10px 4px 8px; border-radius: 16px; gap: 2px; }
+  .shop-prev { height: 76px; }
+  .shop-prev .mascot { width: 72px; height: 72px; }
+  .shop-card .shop-n { font-size: .78rem; overflow-wrap: anywhere; }
+  .shop-foot { font-size: .76rem; }
+  .shop-lk { font-size: .7rem; }
+  .shop-card .shop-deal-tag { font-size: .6rem; padding: 1px 5px; }
+  .shop-on { width: 20px; height: 20px; top: 4px; right: 4px; }
+}
+
+/* ===== Boutique v7 : page moins chargée ===== */
+.shop-note { color: var(--muted); font-size: .8rem; margin-bottom: 10px; }
+.shop-note summary .i { color: var(--ok); }
+.shop-deals.shop-deals-slim { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; padding: 8px 10px 8px 14px; margin-bottom: 12px; border-radius: 16px; }
+.shop-deals-slim .shop-deals-h { display: flex; flex-direction: column; align-items: flex-start; gap: 0; margin: 0; min-width: 0; }
+.shop-deals-slim .shop-deals-h b { font-size: .92rem; }
+.shop-deals-slim .shop-deals-h span { font-size: .74rem; }
+.shop-deals-slim .shop-deals-l { display: flex; gap: 6px; overflow: visible; }
+.shop-deals-slim .shop-deal { position: relative; flex: none; padding: 0; width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; display: grid; place-items: center; }
+.shop-deals-slim .shop-deal .mascot { width: 44px; height: 44px; }
+.shop-deals-slim .shop-deal.is-owned .mascot { opacity: .5; }
+.shop-deal-ok { position: absolute; right: -2px; bottom: -2px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: var(--ok); color: #fff; }
+.shop-deal-ok .i { width: 11px; height: 11px; stroke-width: 3.2; }
+.shop-idle { gap: 4px; }
+.shop-idle b { font-size: .98rem; }
+@media (max-width: 760px) {
+  .shop-deals.shop-deals-slim { padding: 6px 8px 6px 12px; }
+  .shop-deals-slim .shop-deal, .shop-deals-slim .shop-deal .mascot { width: 38px; height: 38px; }
+  .shop-deals-slim .shop-deal { flex: none; }
+  .shop-idle b { font-size: .9rem; }
+}
+
+/* ===== Boutique v8 : encore plus épurée ===== */
+.shop-tabs button { padding: 7px 14px; }
+@media (max-width: 760px) {
+  /* Cabine masquée tant que rien n’est à l’essai (sauf Apparence, où elle sert d’aperçu) */
+  .shop-layout:not([data-tab="look"]) .shop-cabin:not(.is-trying) { display: none; }
+  .shop-layout { gap: 10px; }
+}
+.shop-sum { margin: 0 0 8px; font-size: .92rem; color: var(--muted); }
+.shop-sum b { color: var(--text); }
+.shop-main .shop-pace { padding: 8px 12px; font-size: .86rem; }
+@media (max-width: 760px) { .shop-tabs button { padding: 6px 11px; font-size: .82rem; } }
+.shop-more { display: flex; width: 100%; max-width: 320px; margin: 14px auto 4px; }
+.shop-more span { color: var(--muted); font-weight: 600; }
