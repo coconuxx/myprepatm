@@ -1,7 +1,15 @@
 {
- "version": "0.2.2",
+ "version": "0.2.3",
  "date": "2026-11-27",
  "history": [
+  {
+   "version": "0.2.3",
+   "date": "2026-11-27",
+   "notes": [
+    "Nouveau sur l’accueil : « Ta semaine », une case à ouvrir chaque jour où tu atteins ton objectif, avec un cadeau plus gros le week-end",
+    "Coffres de série : un coffre à 7, 14, 30, 50 et 100 jours de suite, avec pièces, bonus et accessoires exclusifs"
+   ]
+  },
   {
    "version": "0.2.2",
    "date": "2026-11-27",

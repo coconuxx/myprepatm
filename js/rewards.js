@@ -288,7 +288,79 @@
       toast(I('flame'), `Objectif du jour atteint ! Série : ${P.streak} jour${P.streak > 1 ? 's' : ''}`);
       sound('level');
       addCoins(EARN.goal);
+      setTimeout(() => { claimToday(); checkChests(); }, 700);
     }
+  }
+
+  // ---------- Semaine de révision : une case par jour où l’objectif est atteint ----------
+  // Cadeaux connus à l’avance, sans tirage au sort (voir garde-fou en tête de fichier).
+  const WEEK_COINS = [10, 15, 15, 20, 25];
+  const dayKey = (d) => d.toLocaleDateString('fr-CA');
+  // Accessoire du dimanche : le premier objet de la sélection de la semaine que tu n’as pas encore
+  function weekItem() { const id = weeklyDeals().find((x) => itemState(ITEMS.find((i) => i.id === x)) === 'buy'); return id ? ITEMS.find((i) => i.id === id) : null; }
+  function weekGift(i) {
+    if (i < 5) return { coins: WEEK_COINS[i], label: `+${WEEK_COINS[i]} pièces`, icon: 'coin' };
+    if (i === 5) return P.inv.freeze < 2 ? { freeze: 1, label: 'Un gel de série', icon: 'snow' } : { coins: 40, label: '+40 pièces', icon: 'coin' };
+    const it = weekItem();
+    return it ? { item: it.id, label: it.name, icon: 'gift' } : { coins: 80, label: '+80 pièces', icon: 'gift' };
+  }
+  function weekState() {
+    const start = weekStart(); const t = today();
+    P.gifts = P.gifts || {};
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start); d.setDate(d.getDate() + i); const k = dayKey(d);
+      const done = !!P.gifts[k] || (P.days[k] || 0) >= goal();
+      return { key: k, letter: 'LMMJVSD'[i], gift: weekGift(i), done, today: k === t, past: k < t };
+    });
+  }
+  function claimToday() {
+    const t = today(); P.gifts = P.gifts || {};
+    if (P.gifts[t] || (P.days[t] || 0) < goal()) return;
+    const i = (new Date().getDay() + 6) % 7; const g = weekGift(i);
+    P.gifts[t] = g.label;
+    if (g.freeze) P.inv.freeze++;
+    if (g.item) { P.owned.push(g.item); P.ownedAt[g.item] = t; }
+    save();
+    if (g.coins) addCoins(g.coins);
+    toast(g.icon === 'coin' ? TM.coin('xs') : I(g.icon), `Case du jour ouverte : <strong>${g.label}</strong>`);
+  }
+
+  // ---------- Coffres de série : contenu connu à l’avance, ouverts une seule fois ----------
+  const CHESTS = [
+    { n: 7, coins: 50, inv: { fifty: 2, freeze: 1 }, label: '50 pièces, 2 jokers 50/50 et un gel de série' },
+    { n: 14, coins: 100, item: 'embers', label: '100 pièces et l’aura « Braises de série »' },
+    { n: 30, coins: 150, inv: { freeze: 2 }, item: 'halo', label: '150 pièces, 2 gels de série et l’Auréole' },
+    { n: 50, coins: 200, item: 'phoenix', label: '200 pièces et le compagnon Phénix' },
+    { n: 100, coins: 300, item: 'diamond', label: '300 pièces et le Diadème de diamant' },
+  ];
+  const nextChest = () => CHESTS.find((c) => !(P.chests || {})[c.n]) || null;
+  function openChest(c) {
+    P.chests = Object.assign({}, P.chests, { [c.n]: today() });
+    let extra = 0; // un bonus déjà au maximum devient des pièces
+    Object.entries(c.inv || {}).forEach(([k, v]) => {
+      const max = (BOOSTS.find((b) => b.id === k) || {}).max || 99;
+      const add = Math.min(v, Math.max(0, max - P.inv[k])); P.inv[k] += add; extra += (v - add) * 20;
+    });
+    if (c.item && !P.owned.includes(c.item)) { P.owned.push(c.item); P.ownedAt[c.item] = today(); }
+    save(); addCoins(c.coins + extra); sound('level'); confetti(140);
+    const it = c.item && ITEMS.find((x) => x.id === c.item);
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal pop chest-modal">
+      <div class="chest-ico">${it ? mascotSVG({ mood: 'happy', size: 130, celebrate: true, equip: Object.assign({}, P.equip, { [it.slot]: it.id }) }) : I('gift')}</div>
+      <div class="muted">Série de ${c.n} jours</div>
+      <h2>Coffre ouvert</h2>
+      <p>${c.label}</p>
+      ${it ? `<button class="btn big-btn" id="chwear">Porter : ${it.name}</button>` : ''}
+      <button class="btn primary big-btn" id="chok">Continuer</button></div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#chok').onclick = () => modal.remove();
+    const w = modal.querySelector('#chwear');
+    if (w) w.onclick = () => { P.equip[it.slot] = it.id; save(); renderHud(); modal.remove(); if (location.hash === '' || location.hash === '#') window.dispatchEvent(new HashChangeEvent('hashchange')); };
+  }
+  function checkChests() {
+    const c = nextChest();
+    if (c && currentStreak() >= c.n) openChest(c);
   }
   function currentStreak() {
     if (!P.lastActive) return 0;
@@ -505,6 +577,7 @@
     itemState, lockLabel, lockProgress, rarity, collection, weeklyDeals, isDeal, priceOf, dealsEnd, DEAL_PCT, setInfo, claimSet, wearSet, pieceOwned, questProgress, checkQuests, pace, comboLine, say, buyItem, buyBoost, useItem, boostActive, addCoins, equip, mascotSVG, setMode, setProfile, lookState, buyLook, setLook,
     answer, resetCombo, getCombo, addXP, sound, confetti, floatText, toast,
     renderHud, applyTheme, toggleSound, currentStreak,
+    weekState, claimToday, CHESTS, nextChest, checkChests,
     onTrainingEnd, onExamEnd, onSurvivalEnd, onDailyEnd,
     reset() { localStorage.removeItem(KEY); load(); applyTheme(); renderHud(); },
   };

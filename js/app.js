@@ -272,6 +272,7 @@
           <span class="home-go-d">${TM.coin('xs')} +${MISSION_BONUS} pièces gagnées · reviens demain</span>
           <button class="home-go-btn" type="button" id="home-modes-2">Jouer encore</button>`}
       </section>
+      ${P.hideGame ? '' : weekCard()}
 
       <section class="home-sub pop-in" aria-labelledby="home-sub-h">
         <div class="home-sub-h">
@@ -301,6 +302,9 @@
       </div>`;
 
     $app.querySelectorAll('#home-modes, #home-modes-2').forEach((b) => b.onclick = openPlay);
+    const wk = document.getElementById('home-week');
+    if (wk) wk.onclick = openChests;
+    if (!P.hideGame) { R.claimToday(); R.checkChests(); }
 
     // Bonus une fois par jour quand la mission est terminée
     if (M.allDone && !bonusGiven) {
@@ -310,6 +314,36 @@
       R.toast(TM.icon('check'), `Mission du jour accomplie · +${MISSION_BONUS} ${TM.coin('xs')}`);
     }
   }
+  // ---------- Semaine de révision et coffres de série (validés sur maquette le 27/11/2026) ----------
+  const giftIco = (g) => (g.icon === 'coin' ? TM.coin('xs') : TM.icon(g.icon));
+  function weekCard() {
+    const W = R.weekState(); const n = W.filter((d) => d.done).length;
+    const cur = W.find((d) => d.today); const c = R.nextChest(); const st = R.currentStreak();
+    const todayLine = cur.done ? `Case du jour ouverte : ${cur.gift.label}` : `Aujourd’hui : ${cur.gift.label}`;
+    return `<button class="home-week pop-in" type="button" id="home-week" aria-haspopup="dialog" aria-label="Ta semaine, ${n} jour${n > 1 ? 's' : ''} sur 7. Voir les coffres de série">
+      <span class="home-week-h"><b>Ta semaine · ${n}/7</b><span>Coffres ${TM.icon('chevron')}</span></span>
+      <span class="home-week-days">${W.map((d) => `<span class="hw-d ${d.done ? 'done' : d.today ? 'cur' : d.past ? 'missed' : ''} ${!d.done && d.gift.icon === 'gift' ? 'big' : ''}" title="${d.gift.label}">${d.done ? TM.icon('check') : giftIco(d.gift)}<i>${d.letter}</i></span>`).join('')}</span>
+      <span class="home-week-l">${todayLine}${c ? ` · coffre à ${c.n} jours de série${st ? ` : encore ${Math.max(0, c.n - st)}` : ''}` : ''}</span>
+    </button>`;
+  }
+  function openChests() {
+    const st = R.currentStreak(); const got = R.profile.chests || {};
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `<div class="modal pop chest-list" role="dialog" aria-modal="true" aria-labelledby="chl-h">
+      <h2 id="chl-h">Coffres de série</h2>
+      <p class="muted">Série actuelle : ${st} jour${st > 1 ? 's' : ''}. Chaque palier ouvre un coffre, une seule fois.</p>
+      <ul>${R.CHESTS.map((c) => { const done = got[c.n]; const next = !done && R.nextChest() === c;
+        return `<li class="${done ? 'done' : next ? 'next' : ''}"><span class="chl-i">${TM.icon(done ? 'check' : next ? 'gift' : 'lock')}</span><b>${c.n} j</b><span>${c.label}${next ? `<small>encore ${Math.max(0, c.n - st)} jour${c.n - st > 1 ? 's' : ''}</small>` : ''}</span></li>`; }).join('')}</ul>
+      <p class="muted chl-n">Ta semaine : chaque jour où tu atteins ton objectif ouvre sa case. Une case ratée ne remet rien à zéro.</p>
+      <button class="btn primary big-btn" type="button" id="chl-ok">Fermer</button></div>`;
+    document.body.appendChild(bg);
+    const close = () => bg.remove();
+    bg.querySelector('#chl-ok').onclick = close;
+    bg.onclick = (e) => { if (e.target === bg) close(); };
+    bg.querySelector('#chl-ok').focus();
+  }
+
   // ---------- Carnet d’erreurs ----------
   function startReview(theme) {
     const qs = TM.errors.pick(10, theme);
@@ -1307,7 +1341,7 @@
       <h2>Ce qui est enregistré sur ton appareil</h2>
       <p>Pour que l’appli fonctionne, ta progression est enregistrée <b>uniquement dans ton navigateur</b> (stockage local, « localStorage »). Ces données ne nous sont jamais envoyées :</p>
       <ul>
-        <li><code>tm_profile</code> : prénom ou pseudo (facultatif), apparence de l’avatar (dessin, aucune photo), date d’examen et score visé, objectif quotidien, XP, niveau, pièces virtuelles, options et accessoires obtenus en boutique, badges, série de jours, réglages (apparence, son, mode concentration), suivi des missions du jour ;</li>
+        <li><code>tm_profile</code> : prénom ou pseudo (facultatif), apparence de l’avatar (dessin, aucune photo), date d’examen et score visé, objectif quotidien, XP, niveau, pièces virtuelles, options et accessoires obtenus en boutique, badges, série de jours, réglages (apparence, son, mode concentration), suivi des missions du jour, cases de la semaine et coffres de série ouverts ;</li>
         <li><code>tm_history</code> : tes 200 dernières sessions (date, mode, score) ;</li>
         <li><code>tm_used_…</code> : les questions déjà vues, pour éviter de te les reposer ;</li>
         <li><code>tm_errors</code> : ton carnet d’erreurs (les questions ratées à revoir, la réponse que tu avais donnée, ta progression sur celles-ci et les dates où tu les as ajoutées ou maîtrisées) ;</li>
