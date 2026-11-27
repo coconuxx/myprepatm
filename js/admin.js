@@ -83,6 +83,7 @@
           <button class="btn" id="adm-coins" type="button">+100 pièces</button>
           <button class="btn" id="adm-xp" type="button">+200 XP</button>
           <button class="btn" id="adm-day" type="button">Rejouer la mission du jour</button>
+          <a class="btn" href="maquettes/premium.html">Maquette Premium</a>
         </div>
         ${TM.accounts ? TM.accounts.adminHTML() : ''}
         <p class="muted admin-soon">Les liens d’accès administrateur se créent et se retirent sur le Mac (admin-links.py).</p>
