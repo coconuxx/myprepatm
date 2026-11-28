@@ -1,7 +1,15 @@
 {
- "version": "0.2.14",
+ "version": "0.2.15",
  "date": "2026-11-28",
  "history": [
+  {
+   "version": "0.2.15",
+   "date": "2026-11-28",
+   "notes": [
+    "Dans chaque leçon, un bouton pour t’entraîner sur la partie que tu viens de lire",
+    "Après une erreur, « Revoir la règle » ouvre la bonne partie de la leçon sans quitter ta série"
+   ]
+  },
   {
    "version": "0.2.14",
    "date": "2026-11-28",

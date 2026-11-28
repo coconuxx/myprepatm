@@ -2025,3 +2025,20 @@ body[data-view="profile"]:has(.pf, .set-page) { background-image: none; }
 .rv:has(.rv-t) .mark { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: .8rem; margin-top: 2px; }
 .rv.ok:has(.rv-t) .mark { background: var(--ok-soft); color: var(--ok); }
 .rv.ko:has(.rv-t) .mark { background: var(--ko-soft); color: var(--ko); }
+
+/* ---------- Leçons reliées aux exercices ---------- */
+.lesson-drill { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 14px; padding: 12px 14px; border-radius: 16px; border: 2px solid color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: transform .1s; }
+.lesson-drill:active { transform: scale(.98); }
+.lesson-drill-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lesson-drill-t b { font-size: .95rem; }
+.lesson-drill-t small { color: var(--muted); font-weight: 600; font-size: .8rem; }
+.lesson-drill-go { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--accent); color: #fff; }
+.lesson-drill-go .i { width: 18px; height: 18px; }
+.lesson-peek { max-width: 520px; max-height: min(82vh, 720px); text-align: left; align-items: stretch; padding: 20px 18px 16px; gap: 4px; }
+.lesson-peek h2 { margin: 0 0 4px; }
+.lesson-peek-k { font-size: .76rem; font-weight: 800; color: var(--muted); }
+.lesson-peek-body { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; border: 0; padding: 0 2px; background: none; }
+.lesson-peek-body .t { display: block; overflow-x: auto; }
+.lesson-peek-acts { padding-top: 10px; }
+.lesson-peek-acts .btn { width: 100%; }
+@media (prefers-reduced-motion: reduce) { .lesson-drill { transition: none; } }

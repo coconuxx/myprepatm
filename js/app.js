@@ -684,7 +684,7 @@
       ${practice ? `<div class="checkbar ${revealed ? (ok ? 'good' : 'bad') : ''}">
         <div class="checkbar-in">
           ${revealed ? (TM.correction
-            ? (TM.LESSONS && TM.LESSONS[qu.theme] ? `<a class="btn ghost cor-lesson" href="#lessons/${qu.theme}" id="cor-lesson">Leçon</a>` : '<span></span>')
+            ? (TM.LESSONS && TM.LESSONS[qu.theme] ? `<button type="button" class="btn ghost cor-lesson" id="cor-lesson">Revoir la règle</button>` : '<span></span>')
             : `<div class="fb"><div class="fb-e">${ok ? '' : `<strong>Réponse : ${LETTERS[qu.answer]}.</strong> `}${qu.explanation}</div></div>`)
             : `<div class="fb-m quiz-ava quiz-ava-think">${R.mascotSVG({ size: 64, mood: 'think' })}</div><div class="fb muted kbd-hint">Astuce : touches A–E puis Entrée</div>`}
           <button class="btn ${revealed ? (ok ? 'success' : 'danger') : 'primary'} big-btn" id="${revealed ? 'continue' : 'check'}" ${!revealed && sel === null ? 'disabled' : ''}>${revealed ? (last ? 'Voir les résultats' : 'Continuer') : 'Vérifier'}</button>
@@ -700,7 +700,7 @@
     on('flag', () => { sec.flags[state.q] = !sec.flags[state.q]; quizView(); });
     on('cor-all', () => { document.getElementById('choices')?.classList.remove('folded'); document.getElementById('cor-all')?.remove(); });
     const lessonLink = document.getElementById('cor-lesson');
-    if (lessonLink) lessonLink.onclick = (e) => { if (!confirm('Quitter la série pour lire la leçon ? Ta progression dans cette série sera perdue.')) e.preventDefault(); };
+    if (lessonLink) lessonLink.onclick = () => lessonPeek(qu);
     on('joker', () => {
       if (!R.useItem('fifty')) return;
       state.fifty = state.fifty || {};
@@ -1470,6 +1470,25 @@
     const w = weakest(st);
     return { k: w.id, why: w.pct === null ? 'Tu n’as pas encore travaillé ce sous-test.' : `C’est ton sous-test le plus faible : ${w.pct} % de réussite.` };
   }
+  // Pendant une série : la partie de leçon qui explique la question, dans une fenêtre par-dessus (on ne quitte pas la série)
+  function lessonPeek(q) {
+    const L = TM.LESSONS[q.theme]; if (!L) return;
+    const i = TM.errors && TM.errors.sectionOf ? TM.errors.sectionOf(q) : -1;
+    const sec = L.sections[i];
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `<div class="modal pop lesson-peek" role="dialog" aria-modal="true" aria-labelledby="lp-h">
+      <span class="lesson-peek-k">${L.title}</span>
+      <h2 id="lp-h">${sec ? sec.t : 'À retenir'}</h2>
+      <div class="lesson lesson-peek-body">${sec ? sec.html : `<ul>${L.memo.map((x) => `<li>${x}</li>`).join('')}</ul>`}</div>
+      <div class="lesson-peek-acts"><button class="btn primary big-btn" type="button" id="lp-ok">Revenir à la question</button></div></div>`;
+    document.body.appendChild(bg);
+    const close = () => { bg.remove(); document.getElementById('cor-lesson')?.focus({ preventScroll: true }); };
+    bg.querySelector('#lp-ok').onclick = close;
+    bg.onclick = (e) => { if (e.target === bg) close(); };
+    bg.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    bg.querySelector('#lp-ok').focus({ preventScroll: true });
+  }
   function lessonList() {
     const st = statsBySubtest();
     const rec = recommendedLesson(st);
@@ -1525,7 +1544,8 @@
         </div>
       </div>
       <nav class="lesson-toc" aria-label="Sommaire">${toc.map(([id, label]) => `<button type="button" data-to="${id}">${label}</button>`).join('')}</nav>
-      ${L.sections.map((s, i) => `<section class="lesson lesson-sec" id="ls-${i}"><h2>${s.t}</h2>${s.html}</section>`).join('')}
+      ${L.sections.map((s, i) => `<section class="lesson lesson-sec" id="ls-${i}"><h2>${s.t}</h2>${s.html}${drillable(k, i) ? `
+        <button type="button" class="lesson-drill" data-drill="${i}"><span class="lesson-drill-t"><b>S’entraîner sur « ${s.t} »</b><small>5 questions de ce type</small></span><span class="lesson-drill-go">${TM.icon('arrow')}</span></button>` : ''}</section>`).join('')}
       <section class="lesson lesson-quiz" id="ls-quiz"></section>
       <div class="row center">${t ? `<a class="btn primary big-btn" href="#train/${k}">S’entraîner en ${t.short}</a>` : `<a class="btn primary big-btn" href="#exam">Passer un examen blanc</a>`}</div>`;
     $app.querySelector('.lesson-toc').style.top = `${document.querySelector('.topbar').offsetHeight}px`;
@@ -1535,8 +1555,14 @@
       const y = el.getBoundingClientRect().top + window.scrollY - (document.querySelector('.topbar').offsetHeight + $app.querySelector('.lesson-toc').offsetHeight + 12);
       window.scrollTo({ top: y, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     }));
+    $app.querySelectorAll('[data-drill]').forEach((b) => (b.onclick = () => {
+      const qs = TM.errors.drill(k, +b.dataset.drill, 5);
+      if (qs.length) startPractice('train', k, qs, null); else go(`train/${k}`);
+    }));
     lessonQuiz(k, L, t);
   }
+  // Une partie de leçon a son entraînement ciblé si elle explique au moins un type de question
+  const drillable = (k, i) => !!(TM.errors && TM.errors.LESSON_SECTIONS && ((TM.errors.LESSON_SECTIONS[k] || [])[i] || []).length);
   // Cours détaillé : sommaire des chapitres, puis un chapitre par page
   function courseView(k, chArg) {
     const L = TM.LESSONS[k]; const C = TM.COURSES[k];
