@@ -91,7 +91,8 @@
     const p = Net.player(id) || {};
     return TM.mascot.svg({ look: p.look, equip: p.equip || {}, level: (p.stats && p.stats.level) || 1, size });
   }
-  const nameOf = (id) => (id === 'me' ? (me() ? me().pseudo : 'Moi') : (Net.player(id) || {}).pseudo || 'Joueur');
+  // Pour soi : le « pseudo affiché » des réglages (le même que sur l'accueil et le profil), sinon le nom de compte
+  const nameOf = (id) => (id === 'me' ? ((TM.rewards && TM.rewards.profile.name) || (me() ? me().pseudo : 'Moi')) : (Net.player(id) || {}).pseudo || 'Joueur');
 
   // ---------- Amis ----------
   const isFriend = (id) => S.friends.includes(id);
