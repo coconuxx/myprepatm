@@ -1,7 +1,15 @@
 {
- "version": "0.2.12",
+ "version": "0.2.13",
  "date": "2026-11-28",
  "history": [
+  {
+   "version": "0.2.13",
+   "date": "2026-11-28",
+   "notes": [
+    "La correction en fin de série montre le début de chaque question",
+    "Les signes % € ? : ne passent plus seuls à la ligne"
+   ]
+  },
   {
    "version": "0.2.12",
    "date": "2026-11-28",

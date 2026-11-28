@@ -875,7 +875,7 @@
       ${exam ? `<div class="seg" id="revtabs">${state.sections.map((s, i) => `<button data-i="${i}" class="${i === state.reviewSection ? 'on' : ''}">${byId(s.id).icon} ${byId(s.id).short}</button>`).join('')}</div>` : ''}
       <div class="review">${rsec.questions.map((q, i) => {
         const a = rsec.answers[i]; const ok = a === q.answer;
-        return `<details class="rv ${ok ? 'ok' : 'ko'}"><summary><span class="mark">${ok ? '✓' : a === null ? '–' : '✗'}</span> Question ${i + 1}</summary>
+        return `<details class="rv ${ok ? 'ok' : 'ko'}"><summary><span class="mark">${ok ? '✓' : a === null ? '–' : '✗'}</span><span class="rv-t"><small>Question ${i + 1}</small><span class="rv-q">${esc(plainText(q.prompt))}</span></span></summary>
           <div class="prompt">${q.prompt}</div>
           <p><strong>Ta réponse :</strong> ${a === null ? 'aucune' : q.choices[a]}${TM.correction ? '' : `<br><strong>Bonne réponse :</strong> ${q.choices[q.answer]}`}</p>
           ${TM.correction ? TM.correction.card(q, a, { review: true, id: 'cor-' + i }) : `<p class="muted">${q.explanation}</p>`}</details>`;
@@ -1487,7 +1487,7 @@
         return `<li class="pop-in" style="animation-delay:${(i + 1) * 35}ms"><a href="#lessons/${k}">
           <span class="ch-n">${String(i).padStart(2, '0')}</span>
           <span class="row-t"><b>${L.title}</b>
-            <span class="lesson-ch-meta"><span>${readMinutes(L)} min de lecture</span>${(TM.COURSES[k]?.chapters.length) ? `<span>· cours en ${TM.COURSES[k].chapters.length} chapitres</span>` : ''}${q !== undefined ? `<span class="lesson-ch-quiz${q === L.quiz.length ? ' full' : ''}">Quiz ${q}/${L.quiz.length}</span>` : ''}</span>
+            <span class="lesson-ch-meta"><span>${readMinutes(L)} min de lecture${(TM.COURSES[k]?.chapters.length) ? ` · cours en ${TM.COURSES[k].chapters.length} chapitres` : ''}</span>${q !== undefined ? `<span class="lesson-ch-quiz${q === L.quiz.length ? ' full' : ''}">Quiz ${q}/${L.quiz.length}</span>` : ''}</span>
             ${t ? (m === null ? '<span class="lesson-mast"><span class="lesson-mast-l">Maîtrise : pas encore testé</span></span>'
               : `<span class="lesson-mast"><span class="lesson-mast-l">Maîtrise ${m} %</span><span class="bar"><span class="${masteryCls(m)}" style="width:${m}%"></span></span></span>`) : ''}
           </span>
