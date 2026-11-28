@@ -378,39 +378,62 @@
   }
   // Texte brut d'un énoncé : sans balises, et avec les espaces spéciaux (&nbsp;) et autres entités convertis
   function plainText(h) { const d = document.createElement('div'); d.innerHTML = String(h || '').replace(/<[^>]+>/g, ' '); return d.textContent.replace(/\s+/g, ' ').trim(); }
+  // Onglet choisi et liste dépliée : gardés tant que l'appli reste ouverte
+  let errTab = 'mine', errMore = false;
   function errorsView() {
     const E = TM.errors; const n = E.count(); const by = E.byTheme();
     const full = !TM.premium || TM.premium.has(2); // Premium : carnet complet à partir du pass 3 mois
-    const items = E.items.slice(0, full ? 25 : 5);
+    const all = E.items.slice(0, full ? 25 : 5);
+    const items = full && !errMore ? all.slice(0, 5) : all;
+    const traps = full ? E.traps().filter((t) => t.topic.tip && t.n >= 2) : [];
+    if (!full || !traps.length) errTab = 'mine';
     const dots = (k) => Array.from({ length: E.MASTER }, (_, i) => `<span class="errors-dot ${i < k ? 'on' : ''}"></span>`).join('');
-    $app.innerHTML = `${pageHead('errors', 'Carnet d’erreurs', n ? `${n} question${n > 1 ? 's' : ''} à revoir. Réussis-en une ${E.MASTER} fois de suite pour la maîtriser.` : 'Aucune erreur à revoir pour l’instant.', 'history')}
-      <section class="errors-sum pop-in">
-        <div class="errors-k"><b>${n}</b><span>à revoir</span></div>
-        <div class="errors-k"><b>${E.mastered}</b><span>maîtrisées</span></div>
-        <div class="errors-k"><b>${E.reviewedToday()}</b><span>revues aujourd’hui</span></div>
-      </section>
-      ${n && !full ? TM.premium.lock('Revoir tes erreurs en séries', 'Les séries de révision et le tri par sous-test font partie du carnet complet.', 2) : ''}
-      ${n && full ? `<button class="btn primary big-btn" id="errors-go">Revoir ${Math.min(10, n)} erreur${Math.min(10, n) > 1 ? 's' : ''}</button>`
-          : `<div class="empty errors-empty">${TM.icon('check')}<p>Ton carnet est vide. Chaque question ratée en entraînement, au défi du jour, en survie ou en examen blanc arrivera ici.</p><a class="btn" href="#train">S’entraîner</a></div>`}
-      ${n && full ? `<h2>Par sous-test</h2>
-      <div class="rows">${F.subtests.filter((t) => by[t.id]).map((t) => `<button class="row-i errors-row" data-theme="${t.id}">
+    const tag = (theme) => { const t = byId(theme); return `<span class="err-tag" style="--c:var(--c-${theme})">${t ? t.short : ''}</span>`; };
+    const nTxt = Math.min(10, n);
+    // En-tête : titre, chiffres et bouton réunis dans la même carte
+    const hero = n ? `<div class="err-ks"><div><b>${n}</b>à revoir</div><div><b>${E.mastered}</b>maîtrisée${E.mastered > 1 ? 's' : ''}</div><div><b>${E.reviewedToday()}</b>aujourd’hui</div></div>
+      ${full ? `<button class="err-go" id="errors-go" type="button">Revoir ${nTxt} erreur${nTxt > 1 ? 's' : ''}</button>` : ''}` : '';
+    const maxBy = Math.max(1, ...Object.values(by));
+    const mine = `${full ? `<h2>Par sous-test</h2>
+      <div class="rows">${F.subtests.filter((t) => by[t.id]).map((t) => `<button class="row-i errors-row" data-theme="${t.id}" style="--c:var(--c-${t.id})">
           <span class="ico ico-${t.id}">${t.icon}</span>
-          <span class="row-t"><b>${t.name}</b><span>${by[t.id]} erreur${by[t.id] > 1 ? 's' : ''} · revoir celles-ci</span></span>
-          <span class="errors-n">${by[t.id]}</span>${TM.icon('arrow', 'chev')}
+          <span class="row-t"><b>${t.name}</b><span>${plural(by[t.id], 'erreur')} · revoir celles-ci</span><i class="err-bar"><i style="width:${Math.round(by[t.id] / maxBy * 100)}%"></i></i></span>
+          ${TM.icon('arrow', 'chev')}
         </button>`).join('')}</div>` : ''}
-      ${n ? `<h2>Dernières erreurs</h2>
-      <div class="review">${items.map((x, i) => {
-        const t = byId(x.q.theme); const txt = plainText(x.q.prompt);
-        return `<details class="rv ko errors-item"><summary><span class="errors-tag">${t ? t.short : ''}</span> ${esc(txt.slice(0, 90))}${txt.length > 90 ? '…' : ''}</summary>
-          <div class="prompt">${x.q.prompt}</div>
-          <p><strong>Bonne réponse :</strong> ${x.q.choices[x.q.answer]}</p>
-          <p class="muted">${x.q.explanation}</p>
-          <div class="errors-meta"><span>Maîtrise ${dots(x.streak)}</span><span>Ratée ${x.misses} fois</span><button class="btn ghost" data-rm="${i}">Retirer du carnet</button></div>
+      <h2>Dernières erreurs</h2>
+      <div class="err-list">${items.map((x, i) => {
+        const txt = plainText(x.q.prompt);
+        return `<details class="err-it"><summary><span class="err-it-t">${tag(x.q.theme)}<small>ratée ${x.misses} fois</small><span class="err-q">${esc(txt)}</span></span>${TM.icon('chevron', 'err-chev')}</summary>
+          <div class="err-ans">
+            ${x.given ? `<p class="err-ko"><span>Ta réponse</span>${x.given}</p>` : ''}
+            <p class="err-ok"><span>Bonne réponse</span>${x.q.choices[x.q.answer]}</p>
+            <p class="muted">${x.q.explanation}</p>
+            ${/<(svg|table|img|br|div|p)\b/i.test(x.q.prompt) ? `<details class="err-full"><summary>Voir l’énoncé complet</summary><div class="prompt">${x.q.prompt}</div></details>` : ''}
+            <div class="errors-meta"><span>Maîtrise ${dots(x.streak)}</span><button class="btn ghost" type="button" data-rm="${i}">Retirer du carnet</button></div>
+          </div>
         </details>`;
-      }).join('')}</div>` : ''}`;
+      }).join('')}</div>
+      ${full && all.length > 5 ? `<button class="btn err-more" id="err-more" type="button">${errMore ? 'Voir moins' : `Voir les ${all.length - 5} autres`}</button>` : ''}`;
+    const trapsHTML = `<p class="muted err-intro">Le genre d’erreur que tu refais le plus, avec la règle à retenir.</p>
+      ${traps.map((t, i) => `<section class="err-trap">
+        <div class="err-trap-h"><div>${tag(t.topic.theme)}<b>${t.topic.label}</b></div><div class="err-trap-n"><b>${t.n}</b>erreur${t.n > 1 ? 's' : ''}</div></div>
+        <p class="err-rule"><span>À retenir</span>${t.topic.tip}</p>
+        <button class="btn err-trap-go" type="button" data-trap="${i}">S’entraîner sur ce piège</button>
+      </section>`).join('')}`;
+    $app.innerHTML = `${pageHead('errors', 'Carnet d’erreurs', n ? `Réussis une question ${E.MASTER} fois de suite pour la maîtriser.` : 'Aucune erreur à revoir pour l’instant.', 'history', hero)}
+      ${n && !full ? TM.premium.lock('Revoir tes erreurs en séries', 'Les séries de révision et le tri par sous-test font partie du carnet complet.', 2) : ''}
+      ${!n ? `<div class="empty errors-empty">${TM.icon('check')}<p>Ton carnet est vide. Chaque question ratée en entraînement, au défi du jour, en survie ou en examen blanc arrivera ici.</p><a class="btn" href="#train">S’entraîner</a></div>` : ''}
+      ${n && traps.length ? `<div class="err-tabs" role="tablist">
+        <button type="button" role="tab" class="err-tab-a ${errTab === 'mine' ? 'on' : ''}" aria-selected="${errTab === 'mine'}" data-tab="mine"><b>Mes erreurs</b><small>${plural(n, 'question')}</small></button>
+        <button type="button" role="tab" class="err-tab-b ${errTab === 'traps' ? 'on' : ''}" aria-selected="${errTab === 'traps'}" data-tab="traps"><b>Pièges récurrents</b><small>${traps.length} repéré${traps.length > 1 ? 's' : ''}</small></button>
+      </div>` : ''}
+      ${n ? (errTab === 'traps' ? trapsHTML : mine) : ''}`;
     const go = document.getElementById('errors-go'); if (go) go.onclick = () => startReview();
     $app.querySelectorAll('[data-theme]').forEach((b) => b.onclick = () => startReview(b.dataset.theme));
     $app.querySelectorAll('[data-rm]').forEach((b) => b.onclick = (e) => { e.preventDefault(); TM.errors.remove(items[+b.dataset.rm].key); errorsView(); });
+    $app.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { errTab = b.dataset.tab; errorsView(); });
+    const more = document.getElementById('err-more'); if (more) more.onclick = () => { errMore = !errMore; errorsView(); };
+    $app.querySelectorAll('[data-trap]').forEach((b) => b.onclick = () => { const qs = E.asQuestions(traps[+b.dataset.trap].items.slice(0, 10)); if (qs.length) startPractice('review', 'mix', qs, null); });
   }
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

@@ -1,7 +1,16 @@
 {
- "version": "0.2.11",
+ "version": "0.2.12",
  "date": "2026-11-28",
  "history": [
+  {
+   "version": "0.2.12",
+   "date": "2026-11-28",
+   "notes": [
+    "Nouveau carnet d’erreurs : tes 5 dernières erreurs, et les autres sur demande",
+    "Touche une erreur pour voir ta réponse et la bonne réponse",
+    "Nouvel onglet « Pièges récurrents » : la règle à retenir et une série pour t’entraîner dessus"
+   ]
+  },
   {
    "version": "0.2.11",
    "date": "2026-11-28",

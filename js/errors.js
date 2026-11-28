@@ -59,6 +59,10 @@
   function pick(n, theme) {
     const pool = D.items.filter((x) => !theme || x.q.theme === theme)
       .sort((a, b) => b.misses - a.misses || a.last - b.last).slice(0, n);
+    return asQuestions(pool);
+  }
+  // Questions prêtes à rejouer à partir d'erreurs précises (ex. celles d'un piège)
+  function asQuestions(pool) {
     return pool.map((x) => {
       const q = Object.assign({}, x.q, { errKey: x.key, errStreak: x.streak });
       if (q.theme !== 'cm') {
@@ -138,7 +142,7 @@
   }
 
   TM.errors = {
-    add, reviewed, pick, remove, count, byTheme, reviewedToday, MASTER, topicOf, traps, week, plain, TOPICS,
+    add, reviewed, pick, asQuestions, remove, count, byTheme, reviewedToday, MASTER, topicOf, traps, week, plain, TOPICS,
     get items() { return D.items; }, get mastered() { return D.mastered; },
     reset() { try { localStorage.removeItem(KEY); } catch (e) {} load(); },
   };
