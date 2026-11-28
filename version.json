@@ -1,7 +1,17 @@
 {
- "version": "0.2.15",
+ "version": "0.2.16",
  "date": "2026-11-28",
  "history": [
+  {
+   "version": "0.2.16",
+   "date": "2026-11-28",
+   "notes": [
+    "Leçons plus claires : les parties s’ouvrent une par une, avec ta progression de lecture",
+    "Un exemple guidé pas à pas dans chaque partie",
+    "Quiz de 8 questions et nouvelles parties : fractions, tous/certains/aucun, heures et calendriers",
+    "Fiches de révision réécrites en vraies questions"
+   ]
+  },
   {
    "version": "0.2.15",
    "date": "2026-11-28",

@@ -2042,3 +2042,67 @@ body[data-view="profile"]:has(.pf, .set-page) { background-image: none; }
 .lesson-peek-acts { padding-top: 10px; }
 .lesson-peek-acts .btn { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .lesson-drill { transition: none; } }
+
+/* Exemple guidé dans les leçons */
+.lesson-gx { margin: 16px 0 4px; padding: 14px; border-radius: 18px; background: var(--surface-2); border: 2px solid var(--border); }
+.lesson-gx-k { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 800; color: var(--accent); }
+.lesson-gx-k .i { width: 16px; height: 16px; }
+.lesson-gx-text { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--surface); font-size: .95rem; line-height: 1.55; border-left: 0; }
+.lesson-gx-q { margin: 10px 0; font-weight: 700; line-height: 1.45; }
+.lesson-gx-c { display: flex; flex-direction: column; gap: 6px; }
+.lesson-gx-c button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 2px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: .92rem; text-align: left; cursor: pointer; transition: transform .1s; }
+.lesson-gx-c button:active:not(:disabled) { transform: scale(.98); }
+.lesson-gx-c button:disabled { cursor: default; }
+.lesson-gx-c .letter { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; background: var(--surface-2); font-size: .78rem; font-weight: 800; }
+.lesson-gx-c button.ok { border-color: var(--ok); background: var(--ok-soft); }
+.lesson-gx-c button.ok .letter { background: var(--ok); color: #fff; }
+.lesson-gx-c button.ko { border-color: var(--ko); background: var(--ko-soft); }
+.lesson-gx-c button.ko .letter { background: var(--ko); color: #fff; }
+.lesson-gx-hint { margin: 8px 0 0; font-size: .85rem; }
+.lesson-gx-hint.good { color: var(--ok); font-weight: 700; } .lesson-gx-hint.bad { color: var(--ko); font-weight: 700; }
+.lesson-gx-steps { margin: 10px 0 0; padding-left: 0; list-style: none; counter-reset: gx; display: flex; flex-direction: column; gap: 8px; }
+.lesson-gx-steps li { counter-increment: gx; display: flex; gap: 10px; line-height: 1.5; animation: gx-in .25s ease-out; }
+.lesson-gx-steps li::before { content: counter(gx); flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--accent); font-size: .78rem; font-weight: 800; }
+.lesson-gx-steps li[hidden] { display: none; }
+.lesson-gx-trap { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--ko-soft); line-height: 1.5; animation: gx-in .25s ease-out; }
+.lesson-gx-trap b { display: block; font-size: .74rem; font-weight: 800; color: var(--ko); }
+.lesson-gx-trap[hidden] { display: none; }
+.lesson-gx-next { width: 100%; justify-content: center; margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .lesson-gx-steps li, .lesson-gx-trap { animation: none; } .lesson-gx-c button { transition: none; } }
+@keyframes gx-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Leçons allégées : une seule ligne d'actions sous chaque partie, exemple replié */
+.lesson-acts { display: flex; gap: 8px; margin-top: 14px; }
+.lesson-act { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 10px; border-radius: 12px; border: 2px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; transition: transform .1s; }
+.lesson-act:active { transform: scale(.97); }
+.lesson-act .i { width: 16px; height: 16px; color: var(--accent); }
+.lesson-act.on { border-color: var(--accent); }
+.lesson-act-go { background: var(--accent); border-color: var(--accent); color: #fff; }
+.lesson-act-go .i { color: #fff; }
+.lesson-gx[hidden] { display: none; }
+.lesson-gx { margin-top: 10px; }
+.lesson-card-q { display: block; margin-bottom: 8px; font-style: normal; font-size: .85rem; font-weight: 600; opacity: .7; }
+@media (prefers-reduced-motion: reduce) { .lesson-act { transition: none; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lesson-act-go, :root:not([data-theme="light"]) .lesson-act-go .i { color: #151a3d; } }
+:root[data-theme="dark"] .lesson-act-go, :root[data-theme="dark"] .lesson-act-go .i { color: #151a3d; }
+
+/* Leçon : parties en liste à ouvrir une par une */
+.lesson-parts-h { display: flex; justify-content: space-between; align-items: baseline; margin: 22px 2px 10px; }
+.lesson-parts-h h2 { margin: 0; }
+.lesson-parts-h .muted { font-size: .85rem; font-weight: 700; }
+.lesson-parts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.lesson-part { border: 2px solid var(--border); border-radius: 18px; background: var(--surface); overflow: hidden; scroll-margin-top: 80px; }
+.lesson-part.open { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.lesson-part-h { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.lesson-part-h:active { background: var(--surface-2); }
+.lesson-part-n { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); color: var(--muted); font-weight: 800; font-size: .9rem; }
+.lesson-part-n.on { background: var(--ok-soft); color: var(--ok); }
+.lesson-part-n .i { width: 16px; height: 16px; }
+.lesson-part-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lesson-part-t b { font-size: 1rem; }
+.lesson-part-t small { color: var(--muted); font-weight: 600; font-size: .8rem; }
+.lesson-part-chev { flex: none; width: 18px; height: 18px; color: var(--muted); transition: transform .2s; }
+.lesson-part.open .lesson-part-chev { transform: rotate(90deg); }
+.lesson-part-b { border: 0; border-top: 1px solid var(--border); border-radius: 0; margin: 0; padding: 4px 16px 16px; background: none; }
+.lesson-part-b[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .lesson-part-chev { transition: none; } }

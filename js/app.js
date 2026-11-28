@@ -1527,7 +1527,9 @@
     saveLessonProg(k, { read: R.today() });
     const C = TM.COURSES[k] || { chapters: [], cards: [] };
     const doneCh = (lessonProg(k).course || []).length;
-    const toc = [...L.sections.map((s, i) => [`ls-${i}`, s.t]), ['ls-quiz', 'Quiz']];
+    const seen = lessonProg(k).parts || [];
+    const secMin = (h) => Math.max(1, Math.round(h.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length / 180));
+    // Les parties se lisent une par une (liste à ouvrir) : la page reste courte et donne une vue d'ensemble
     $app.innerHTML = `<a class="back" href="#lessons">← Leçons</a>
       <header class="lesson-head pop-in">
         <span class="lesson-kicker">${t ? `<span class="ico ico-${t.id}">${t.icon}</span>` : `<span class="ico">${TM.icon('exam')}</span>`}Chapitre ${String(idx).padStart(2, '0')}</span>
@@ -1536,24 +1538,45 @@
         <div class="lesson-meta"><span>${TM.icon('timer')} ${readMinutes(L)} min de lecture</span>${t ? `<span>Maîtrise : ${m === null ? 'pas encore testé' : `${m} %`}</span>` : ''}</div>
       </header>
       <aside class="lesson-memo pop-in"><h2>À retenir</h2><ul>${L.memo.map((x) => `<li>${x}</li>`).join('')}</ul></aside>
-      <div class="lesson-study pop-in">
-        <h2>Réviser sans exercice</h2>
+      <div class="lesson-parts-h"><h2>Les ${L.sections.length} parties</h2><span class="muted" id="lp-count">${seen.filter((x) => x < L.sections.length).length} / ${L.sections.length} lues</span></div>
+      <div class="lesson-parts">${L.sections.map((s, i) => `<section class="lesson-part" id="ls-${i}">
+        <button type="button" class="lesson-part-h" data-part="${i}" aria-expanded="false" aria-controls="lpb-${i}">
+          <span class="lesson-part-n${seen.includes(i) ? ' on' : ''}">${seen.includes(i) ? TM.icon('check') : i + 1}</span>
+          <span class="lesson-part-t"><b>${s.t}</b><small>${secMin(s.html)} min de lecture</small></span>
+          ${TM.icon('chevron', 'lesson-part-chev')}
+        </button>
+        <div class="lesson-part-b lesson" id="lpb-${i}" hidden>${s.html}${s.ex || drillable(k, i) ? `<div class="lesson-acts">${s.ex ? `<button type="button" class="lesson-act" data-gx-open="${i}" aria-expanded="false">${TM.icon('sparkle')}Exemple guidé</button>` : ''}${drillable(k, i) ? `<button type="button" class="lesson-act lesson-act-go" data-drill="${i}">${TM.icon('target')}S’entraîner</button>` : ''}</div>` : ''}${s.ex ? guidedHTML(s.ex, i) : ''}</div>
+      </section>`).join('')}</div>
+      <section class="lesson lesson-quiz" id="ls-quiz"></section>
+      ${C.chapters.length || C.cards.length ? `<div class="lesson-study pop-in">
+        <h2>Pour aller plus loin</h2>
         <div class="lesson-study-grid">
           ${C.chapters.length ? `<a class="lesson-study-i" href="#lessons/${k}/cours">${TM.icon('book')}<b>Cours complet</b><span>${C.chapters.length} chapitres expliqués avec des exemples${doneCh ? ` · ${doneCh}/${C.chapters.length} lus` : ''}</span></a>` : ''}
-          ${C.cards.length ? `<a class="lesson-study-i" href="#lessons/${k}/fiches">${TM.icon('sprout')}<b>Fiches de révision</b><span>${C.cards.length} fiches à retourner pour mémoriser</span></a>` : ''}
+          ${C.cards.length ? `<a class="lesson-study-i" href="#lessons/${k}/fiches">${TM.icon('sprout')}<b>Fiches de révision</b><span>${C.cards.length} questions-réponses pour mémoriser</span></a>` : ''}
         </div>
-      </div>
-      <nav class="lesson-toc" aria-label="Sommaire">${toc.map(([id, label]) => `<button type="button" data-to="${id}">${label}</button>`).join('')}</nav>
-      ${L.sections.map((s, i) => `<section class="lesson lesson-sec" id="ls-${i}"><h2>${s.t}</h2>${s.html}${drillable(k, i) ? `
-        <button type="button" class="lesson-drill" data-drill="${i}"><span class="lesson-drill-t"><b>S’entraîner sur « ${s.t} »</b><small>5 questions de ce type</small></span><span class="lesson-drill-go">${TM.icon('arrow')}</span></button>` : ''}</section>`).join('')}
-      <section class="lesson lesson-quiz" id="ls-quiz"></section>
+      </div>` : ''}
       <div class="row center">${t ? `<a class="btn primary big-btn" href="#train/${k}">S’entraîner en ${t.short}</a>` : `<a class="btn primary big-btn" href="#exam">Passer un examen blanc</a>`}</div>`;
-    $app.querySelector('.lesson-toc').style.top = `${document.querySelector('.topbar').offsetHeight}px`;
-    const tocBtns = [...$app.querySelectorAll('.lesson-toc button')];
-    tocBtns.forEach((b) => (b.onclick = () => {
-      const el = document.getElementById(b.dataset.to);
-      const y = el.getBoundingClientRect().top + window.scrollY - (document.querySelector('.topbar').offsetHeight + $app.querySelector('.lesson-toc').offsetHeight + 12);
+    // Ouvrir une partie referme l'autre, la marque comme lue et la place en haut de l'écran
+    $app.querySelectorAll('[data-part]').forEach((h) => (h.onclick = () => {
+      const i = +h.dataset.part; const body = document.getElementById(`lpb-${i}`); const open = body.hidden;
+      $app.querySelectorAll('.lesson-part-b').forEach((b) => { b.hidden = true; });
+      $app.querySelectorAll('[data-part]').forEach((x) => { x.setAttribute('aria-expanded', 'false'); x.parentNode.classList.remove('open'); });
+      if (!open) return;
+      body.hidden = false; h.setAttribute('aria-expanded', 'true'); h.parentNode.classList.add('open');
+      const done = lessonProg(k).parts || [];
+      if (!done.includes(i)) {
+        saveLessonProg(k, { parts: [...done, i].sort((x, y) => x - y) });
+        const n = h.querySelector('.lesson-part-n'); n.classList.add('on'); n.innerHTML = TM.icon('check');
+        document.getElementById('lp-count').textContent = `${done.length + 1} / ${L.sections.length} lues`;
+      }
+      const y = h.getBoundingClientRect().top + window.scrollY - document.querySelector('.topbar').offsetHeight - 10;
       window.scrollTo({ top: y, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }));
+    $app.querySelectorAll('[data-gx]').forEach((box) => bindGuided(box, L.sections[+box.dataset.gx].ex));
+    // L'exemple guidé reste replié tant qu'on ne le demande pas : la leçon reste légère
+    $app.querySelectorAll('[data-gx-open]').forEach((b) => (b.onclick = () => {
+      const box = $app.querySelector(`[data-gx="${b.dataset.gxOpen}"]`); const open = box.hidden;
+      box.hidden = !open; b.setAttribute('aria-expanded', String(open)); b.classList.toggle('on', open);
     }));
     $app.querySelectorAll('[data-drill]').forEach((b) => (b.onclick = () => {
       const qs = TM.errors.drill(k, +b.dataset.drill, 5);
@@ -1561,8 +1584,41 @@
     }));
     lessonQuiz(k, L, t);
   }
+  // Exemple guidé : une vraie question, on peut tenter sa chance, puis la méthode se dévoile étape par étape
+  function guidedHTML(ex, i) {
+    return `<div class="lesson-gx" data-gx="${i}" hidden>
+      ${ex.text ? `<blockquote class="lesson-gx-text">${ex.text}</blockquote>` : ''}
+      <p class="lesson-gx-q">${ex.q}</p>
+      <div class="lesson-gx-c">${ex.c.map((c, j) => `<button type="button" data-j="${j}"><span class="letter">${LETTERS[j]}</span><span>${c}</span></button>`).join('')}</div>
+      <p class="lesson-gx-hint muted">Choisis une réponse, ou découvre directement la méthode.</p>
+      <ol class="lesson-gx-steps">${ex.steps.map((st) => `<li hidden>${st}</li>`).join('')}</ol>
+      ${ex.trap ? `<p class="lesson-gx-trap" hidden><b>Le piège</b>${ex.trap}</p>` : ''}
+      <button type="button" class="btn lesson-gx-next">Voir la méthode</button>
+    </div>`;
+  }
+  function bindGuided(box, ex) {
+    const steps = [...box.querySelectorAll('.lesson-gx-steps li')]; const next = box.querySelector('.lesson-gx-next');
+    const chs = [...box.querySelectorAll('.lesson-gx-c button')]; let shown = 0; let picked = null;
+    const answer = () => chs.forEach((b, j) => { b.disabled = true; b.classList.toggle('ok', j === ex.a); b.classList.toggle('ko', j === picked && j !== ex.a); });
+    const reveal = () => {
+      if (shown < steps.length) { steps[shown].hidden = false; shown++; }
+      if (shown >= steps.length) {
+        answer(); box.querySelector('.lesson-gx-trap')?.removeAttribute('hidden'); next.remove();
+      } else next.textContent = 'Étape suivante';
+      box.querySelector('.lesson-gx-hint')?.remove();
+    };
+    chs.forEach((b) => (b.onclick = () => {
+      if (picked !== null) return; picked = +b.dataset.j;
+      b.classList.add(picked === ex.a ? 'ok' : 'ko');
+      chs.forEach((x) => (x.disabled = true));
+      const hint = box.querySelector('.lesson-gx-hint');
+      if (hint) { hint.textContent = picked === ex.a ? 'Bien vu ! Vérifie que ta méthode est la bonne.' : 'Pas tout à fait. Regarde la méthode pas à pas.'; hint.classList.add(picked === ex.a ? 'good' : 'bad'); }
+      next.textContent = 'Voir la méthode';
+    }));
+    next.onclick = reveal;
+  }
   // Une partie de leçon a son entraînement ciblé si elle explique au moins un type de question
-  const drillable = (k, i) => !!(TM.errors && TM.errors.LESSON_SECTIONS && ((TM.errors.LESSON_SECTIONS[k] || [])[i] || []).length);
+  const drillable = (k, i) => !!(TM.errors && TM.errors.idsAt && TM.errors.idsAt(k, i).length);
   // Cours détaillé : sommaire des chapitres, puis un chapitre par page
   function courseView(k, chArg) {
     const L = TM.LESSONS[k]; const C = TM.COURSES[k];
@@ -1640,7 +1696,7 @@
         <button type="button" class="lesson-card${reduce ? ' still' : ''}" aria-pressed="false" aria-label="Retourner la fiche">
           <span class="lesson-card-inner">
             <span class="lesson-card-face lesson-card-front"><small>Question</small><b>${c.f}</b><em>Touche pour voir la réponse</em></span>
-            <span class="lesson-card-face lesson-card-back" aria-hidden="true"><small>Réponse</small><b>${c.b}</b></span>
+            <span class="lesson-card-face lesson-card-back" aria-hidden="true"><small>Réponse</small><em class="lesson-card-q">${c.f}</em><b>${c.b}</b></span>
           </span>
         </button>
         <div class="lesson-card-acts">

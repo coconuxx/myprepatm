@@ -125,23 +125,26 @@
     }
     return { id: q.theme + '-autre', theme: q.theme, label: 'Autres questions', tip: '' };
   }
-  // Lien leçons ↔ exercices : pour chaque leçon, les pièges que chaque partie explique (même ordre que TM.LESSONS[k].sections)
-  const LESSON_SECTIONS = {
-    comprehension: [[], ['these', 'details', 'pas-cite'], [], ['pas-cite']],
-    calcul: [['pct-succ', 'pct-evol', 'pct-inv'], ['algebre', 'fractions'], ['vitesse', 'travail'], ['moyenne', 'ages'], ['geom'], ['denombr']],
-    argumentation: [['implic', 'quantif'], ['sophismes'], ['affaibl']],
-    cm: [['cm-each', 'cm-one', 'cm-both', 'cm-none'], [], [], ['cm-none', 'cm-each']],
-    expression: [['accords'], ['modes'], ['fautes'], ['vocab'], ['connect']],
-    logique: [['suites-n'], ['suites-l'], ['codage'], ['regles'], []],
+  // Lien leçons ↔ exercices : pour chaque partie de leçon (par son titre), les pièges qu'elle explique
+  const LESSON_TOPICS = {
+    comprehension: { 'Types de questions': ['these', 'details', 'pas-cite'], 'Les pièges classiques': ['pas-cite'] },
+    calcul: { 'Pourcentages': ['pct-succ', 'pct-evol', 'pct-inv'], 'Calcul mental': ['algebre'], 'Fractions et proportions': ['fractions'], 'Vitesses et débits': ['vitesse', 'travail'], 'Moyennes et équations': ['moyenne', 'ages'], 'Géométrie': ['geom'], 'Probabilités': ['denombr'] },
+    argumentation: { 'Logique des propositions': ['implic'], 'Tous, certains, aucun': ['quantif'], 'Les sophismes': ['sophismes'], 'Renforcer, affaiblir': ['affaibl'] },
+    cm: { 'Les 5 réponses': ['cm-each', 'cm-one', 'cm-both', 'cm-none'], 'Les pièges': ['cm-none', 'cm-each'] },
+    expression: { 'Participe passé': ['accords'], 'Modes et temps': ['modes'], 'Fautes fréquentes': ['fautes'], 'Paronymes': ['vocab'], 'Connecteurs': ['connect'] },
+    logique: { 'Suites de nombres': ['suites-n'], 'Suites de lettres': ['suites-l'], 'Codages': ['codage'], 'Dominos et cartes': ['regles'], 'Heures et calendriers': ['temps'] },
   };
+  const sectionsOf = (theme) => (TM.LESSONS && TM.LESSONS[theme] ? TM.LESSONS[theme].sections : []);
+  // Pièges expliqués par la partie idx de la leçon theme
+  const idsAt = (theme, idx) => { const s = sectionsOf(theme)[idx]; return (s && (LESSON_TOPICS[theme] || {})[s.t]) || []; };
   // Partie de leçon qui explique une question (-1 si aucune)
   function sectionOf(q) {
-    const t = topicOf(q); const list = LESSON_SECTIONS[q.theme] || [];
-    return list.findIndex((ids) => ids.includes(t.id));
+    const t = topicOf(q);
+    return sectionsOf(q.theme).findIndex((s) => ((LESSON_TOPICS[q.theme] || {})[s.t] || []).includes(t.id));
   }
   // Questions d'entraînement d'un seul type : celles que la partie idx de la leçon explique
   function drill(theme, idx, n = 5) {
-    const ids = (LESSON_SECTIONS[theme] || [])[idx] || [];
+    const ids = idsAt(theme, idx);
     const gen = TM.gen && TM.gen[theme];
     if (!ids.length || !gen) return [];
     const out = []; const seen = new Set();
@@ -174,7 +177,7 @@
   }
 
   TM.errors = {
-    add, reviewed, pick, asQuestions, remove, count, byTheme, reviewedToday, MASTER, topicOf, traps, week, plain, TOPICS, LESSON_SECTIONS, sectionOf, drill,
+    add, reviewed, pick, asQuestions, remove, count, byTheme, reviewedToday, MASTER, topicOf, traps, week, plain, TOPICS, LESSON_TOPICS, idsAt, sectionOf, drill,
     get items() { return D.items; }, get mastered() { return D.mastered; },
     reset() { try { localStorage.removeItem(KEY); } catch (e) {} load(); },
   };
