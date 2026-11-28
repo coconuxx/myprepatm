@@ -76,7 +76,7 @@
     const P = R.profile; const L = R.levelInfo();
     const wk = weekId();
     if (!S.week || S.week.id !== wk) { S.week = { id: wk, xp0: P.xp }; save(); }
-    const hist = (() => { try { return JSON.parse(localStorage.getItem('tm_history') || '[]'); } catch (e) { return []; } })();
+    const hist = (() => { try { const h = JSON.parse(localStorage.getItem('tm_history') || '[]'); return Array.isArray(h) ? h.filter((e) => e && typeof e === 'object') : []; } catch (e) { return []; } })();
     const acc = {}; F.subtests.forEach((t) => (acc[t.id] = { c: 0, n: 0 }));
     hist.forEach((h) => Object.entries(h.results || {}).forEach(([id, r]) => { if (acc[id]) { acc[id].c += r.correct; acc[id].n += r.total; } }));
     const sub = {}; F.subtests.forEach((t) => { sub[t.id] = acc[t.id].n ? Math.round((acc[t.id].c / acc[t.id].n) * 100) : null; });

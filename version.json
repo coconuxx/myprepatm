@@ -1,7 +1,14 @@
 {
- "version": "0.2.10",
+ "version": "0.2.11",
  "date": "2026-11-28",
  "history": [
+  {
+   "version": "0.2.11",
+   "date": "2026-11-28",
+   "notes": [
+    "Quand on tourne le téléphone, l’appli demande de le remettre droit au lieu de s’afficher de travers"
+   ]
+  },
   {
    "version": "0.2.10",
    "date": "2026-11-28",

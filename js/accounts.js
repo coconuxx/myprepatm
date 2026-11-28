@@ -57,7 +57,7 @@
   function current() { const s = read(); return s.current ? byId(s, s.current) || null : null; }
   function needsGate() {
     const s = read(); const c = s.current && byId(s, s.current);
-    if (c && c.suspended) { s.current = null; write(s); clearData(); return true; } // suspendu : déconnecté
+    if (c && c.suspended) { snapshot(c.id); s.current = null; write(s); clearData(); return true; } // suspendu : déconnecté, progression rangée pour la réactivation
     return !c;
   }
   function touch() { const s = read(); const c = s.current && byId(s, s.current); if (c) { c.lastSeen = now(); write(s); } }

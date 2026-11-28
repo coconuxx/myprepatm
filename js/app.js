@@ -14,7 +14,7 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
   };
-  const history = () => store.get('tm_history', []);
+  const history = () => { const h = store.get('tm_history', []); return Array.isArray(h) ? h.filter((e) => e && typeof e === 'object') : []; }; // donnée corrompue : repart de zéro
   function saveSession(entry) { const h = history(); h.unshift(entry); store.set('tm_history', h.slice(0, 200)); }
   function statsBySubtest() {
     const s = {}; F.subtests.forEach((t) => (s[t.id] = { c: 0, n: 0 }));

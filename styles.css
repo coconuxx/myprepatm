@@ -1948,3 +1948,16 @@ body[data-view="profile"]:has(.pf, .set-page) { background-image: none; }
 @media (max-width: 760px) { .shop-tabs button { padding: 6px 11px; font-size: .82rem; } }
 .shop-more { display: flex; width: 100%; max-width: 320px; margin: 14px auto 4px; }
 .shop-more span { color: var(--muted); font-weight: 600; }
+
+/* Téléphone en paysage : écran « Remets ton téléphone droit » (iOS ne permet pas de bloquer la rotation) */
+.rotate-lock { display: none; }
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .rotate-lock { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; background: #1a2150; color: #eef1ff; }
+  .rotate-lock b { font-size: 1.25rem; }
+  .rotate-lock span { color: #a9b1e6; }
+  .rotate-lock svg { fill: none; stroke: #ff7a59; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 6px; transform-box: fill-box; transform-origin: center; animation: rl-turn 2.4s ease-in-out infinite; }
+  .rotate-lock circle { fill: #ff7a59; stroke: none; }
+  body { overflow: hidden; }
+}
+@keyframes rl-turn { 0%, 30% { transform: rotate(-90deg); } 60%, 100% { transform: rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .rotate-lock svg { animation: none; } }
